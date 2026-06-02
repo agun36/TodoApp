@@ -4,8 +4,10 @@
   "main": "app.js",
   "scripts": {
     "dev": "node ./bin/www",
+    "start": "node ./bin/www",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
