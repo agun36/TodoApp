@@ -1,0 +1,14 @@
+2026-06-02 17:01:40.426 WAT [26697] LOG:  starting PostgreSQL 14.20 (Homebrew) on x86_64-apple-darwin23.6.0, compiled by Apple clang version 16.0.0 (clang-1600.0.26.6), 64-bit
+2026-06-02 17:01:40.432 WAT [26697] LOG:  listening on IPv6 address "::1", port 51217
+2026-06-02 17:01:40.432 WAT [26697] LOG:  could not bind IPv4 address "127.0.0.1": Address already in use
+2026-06-02 17:01:40.432 WAT [26697] HINT:  Is another postmaster already running on port 51217? If not, wait a few seconds and retry.
+2026-06-02 17:01:40.434 WAT [26697] LOG:  listening on Unix socket "/tmp/.s.PGSQL.51217"
+2026-06-02 17:01:40.444 WAT [26716] LOG:  database system was shut down at 2026-06-02 17:01:40 WAT
+2026-06-02 17:01:40.463 WAT [26697] LOG:  database system is ready to accept connections
+2026-06-02 17:01:43.366 WAT [26800] FATAL:  database "akindeleagun" does not exist
+2026-06-02 17:01:51.797 WAT [27169] FATAL:  role "postgres" does not exist
+2026-06-02 17:02:12.091 WAT [28202] FATAL:  role "postgres" does not exist
+2026-06-02 17:02:35.434 WAT [28874] FATAL:  role "postgres" does not exist
+2026-06-02 17:02:44.565 WAT [29134] FATAL:  role "postgres" does not exist
+2026-06-02 17:05:38.035 WAT [39672] ERROR:  relation "_prisma_migrations" does not exist at character 126
+2026-06-02 17:05:38.035 WAT [39672] STATEMENT:  SELECT "id", "checksum", "finished_at", "migration_name", "logs", "rolled_back_at", "started_at", "applied_steps_count" FROM "_prisma_migrations" ORDER BY "started_at" ASC

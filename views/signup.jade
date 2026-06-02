@@ -1,0 +1,19 @@
+include head.jade
+
+h1 Sign Up
+if message
+  p.error= message
+
+form(method="post", action="/login")
+  p
+    label(for="email") Email:
+    input(type="email", name="email", id="email" required)
+  p
+    label(for="password") Password:
+    input(type="password", name="password", id="password" required)
+  input(type="hidden", name="isSignup", value="true")
+  p
+    input(type="submit", value="Sign Up")
+
+p
+  a(href="/login") Already have an account? Login

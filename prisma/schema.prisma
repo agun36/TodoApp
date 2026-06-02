@@ -9,11 +9,22 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id       Int     @id @default(autoincrement())
+  email    String  @unique
+  password String
+  todos    Todo[]
+}
+
 
 model Todo {
-  id        Int      @id @default(autoincrement())
-  title     String
-  done      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  dueDate   DateTime?
+  id         Int      @id @default(autoincrement())
+  title      String
+  done       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  dueDate    DateTime?
+  repeatType String?  @default("none")
+  repeatOn   String?
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

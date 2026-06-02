@@ -1,19 +1,24 @@
 include head.jade
 
-h1 Login
+h1= isSignup ? 'Sign Up' : 'Login'
 if message
   p.error= message
 
-p Try accessing #[a(href="/restricted") /restricted], then authenticate with "tj" and "foobar".
-
 form(method="post", action="/login")
   p
-    label(for="username") Username:
-    input(type="text", name="username", id="username" required)
+    label(for="email") Email:
+    input(type="email", name="email", id="email" required)
   p
     label(for="password") Password:
     input(type="password", name="password", id="password" required)
+  input(type="hidden", name="isSignup", value=isSignup ? 'true' : 'false')
   p
-    input(type="submit", value="Login")
+    input(type="submit", value=isSignup ? 'Sign Up' : 'Login')
+
+p
+  if isSignup
+    a(href="/login") Already have an account? Login
+  else
+    a(href="/login?signup=true") Don't have an account? Sign up
 
 include foot.jade

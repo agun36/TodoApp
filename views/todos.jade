@@ -21,12 +21,12 @@ html(lang="en")
         padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
       }
       h1 { font-size: 28px; margin-bottom: 24px; text-align: center; font-weight: 700; }
-      .add-form { display: flex; gap: 12px; margin-bottom: 24px; }
-      .add-form input {
-        flex: 1; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px;
+      .add-form { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+      .add-form input, .add-form select {
+        flex: 1; min-width: 140px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px;
         background: var(--bg); color: var(--text); font-size: 15px; outline: none;
       }
-      .add-form input:focus { border-color: var(--accent); }
+      .add-form input:focus, .add-form select:focus { border-color: var(--accent); }
       button {
         padding: 12px 20px; border: none; border-radius: 8px; background: var(--accent);
         color: white; font-weight: 600; cursor: pointer; transition: 0.2s;
@@ -62,6 +62,13 @@ html(lang="en")
         padding-top: 20px; border-top: 1px solid var(--border); align-items: center;
       }
       form.inline { display: inline; }
+      .user-info {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 20px; padding: 12px; background: var(--bg);
+        border-radius: 8px; border: 1px solid var(--border);
+        font-size: 14px; color: var(--muted);
+      }
+      .user-info button { padding: 6px 12px; font-size: 13px; }
       @media (max-width: 500px) {
         .add-form, .controls { flex-direction: column; }
         .todo-item { flex-wrap: wrap; }
@@ -71,12 +78,29 @@ html(lang="en")
     .container
       h1= title
       
+      .user-info
+        span Logged in as: #{email}
+        a(href="/login/logout")
+          button(style="margin-left: 10px;") Logout
+      
       // Add Todo
       form.add-form(method="post" action="/todos")
         input(type="text" name="title" placeholder="What needs to be done?" required)
         input(type="date" name="dueDate" title="Choose the date you want to do this action")
+        select(name="repeatType")
+          option(value="none" selected) No repeat
+          option(value="weekly") Weekly
+        select(name="repeatOn")
+          option(value="" selected) Repeat day
+          option(value="Sunday") Sunday
+          option(value="Monday") Monday
+          option(value="Tuesday") Tuesday
+          option(value="Wednesday") Wednesday
+          option(value="Thursday") Thursday
+          option(value="Friday") Friday
+          option(value="Saturday") Saturday
         button(type="submit") Add
-
+      
       // Controls
       form.controls(method="get" action="/todos")
         input(type="text" name="q" placeholder="Search..." value=query)
@@ -105,17 +129,32 @@ html(lang="en")
                   input(type="hidden" name="id" value=todo.id)
                   input.edit-input(type="text" name="title" value=todo.title autofocus)
                   input(type="date" name="dueDate" value=(todo.dueDate ? new Date(todo.dueDate).toISOString().slice(0,10) : ''))
+                  select(name="repeatType")
+                    option(value="none" selected=todo.repeatType!='weekly') No repeat
+                    option(value="weekly" selected=todo.repeatType=='weekly') Weekly
+                  select(name="repeatOn")
+                    option(value="" selected=!todo.repeatOn) Repeat day
+                    option(value="Sunday" selected=todo.repeatOn=='Sunday') Sunday
+                    option(value="Monday" selected=todo.repeatOn=='Monday') Monday
+                    option(value="Tuesday" selected=todo.repeatOn=='Tuesday') Tuesday
+                    option(value="Wednesday" selected=todo.repeatOn=='Wednesday') Wednesday
+                    option(value="Thursday" selected=todo.repeatOn=='Thursday') Thursday
+                    option(value="Friday" selected=todo.repeatOn=='Friday') Friday
+                    option(value="Saturday" selected=todo.repeatOn=='Saturday') Saturday
                   button.btn-sm(type="submit") Save
                   a(href="/todos")
                     button.btn-sm.btn-ghost(type="button") Cancel
               else
                 .todo-details
                   span.task= todo.title
-                  if todo.dueDate
-                    - const due = new Date(todo.dueDate).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
-                    span.meta When: #{due}
+                  if todo.dueLabel
+                    span.meta When: #{todo.dueLabel}
                   else
                     span.meta No date selected
+                  if todo.repeatLabel
+                    span.meta= todo.repeatLabel
+                  if todo.upcomingLabels && todo.upcomingLabels.length
+                    span.meta Next: #{todo.upcomingLabels.join(', ')}
                 a(href="/todos?edit=" + todo.id)
                   button.btn-sm.btn-ghost(type="button") Edit
                 form.inline(method="post" action="/todos/delete")
