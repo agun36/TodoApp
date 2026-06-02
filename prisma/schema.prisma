@@ -1,0 +1,19 @@
+generator client {
+  provider     = "prisma-client-js"
+  output       = "../node_modules/@prisma/client/.prisma/client"
+  moduleFormat = "cjs"
+}
+
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model Todo {
+  id        Int      @id @default(autoincrement())
+  title     String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  dueDate   DateTime?
+}

@@ -1,16 +1,24 @@
 {
-  "name": "todoapp",
-  "version": "0.0.0",
-  "private": true,
+  "name": "todo-app",
+  "version": "1.0.0",
+  "main": "app.js",
   "scripts": {
-    "start": "node ./bin/www"
+    "dev": "node ./bin/www",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "cookie-parser": "~1.4.4",
-    "debug": "~2.6.9",
-    "express": "~4.16.1",
-    "http-errors": "~1.6.3",
-    "jade": "~1.11.0",
-    "morgan": "~1.9.1"
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.6.1",
+    "express": "^5.2.1",
+    "jade": "^1.11.0",
+    "morgan": "^1.10.1",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.8.0"
   }
 }

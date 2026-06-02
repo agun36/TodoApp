@@ -1,0 +1,129 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    title= title
+    style.
+      :root {
+        --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8;
+        --accent: #3b82f6; --danger: #ef4444; --success: #22c55e; --border: #334155;
+        --radius: 12px;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: var(--bg); color: var(--text); min-height: 100vh;
+        display: flex; justify-content: center; padding: 40px 20px;
+      }
+      .container {
+        width: 100%; max-width: 650px; background: var(--card); border-radius: var(--radius);
+        padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      }
+      h1 { font-size: 28px; margin-bottom: 24px; text-align: center; font-weight: 700; }
+      .add-form { display: flex; gap: 12px; margin-bottom: 24px; }
+      .add-form input {
+        flex: 1; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px;
+        background: var(--bg); color: var(--text); font-size: 15px; outline: none;
+      }
+      .add-form input:focus { border-color: var(--accent); }
+      button {
+        padding: 12px 20px; border: none; border-radius: 8px; background: var(--accent);
+        color: white; font-weight: 600; cursor: pointer; transition: 0.2s;
+      }
+      button:hover { opacity: 0.9; }
+      .controls { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+      .controls select, .controls input {
+        flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px;
+        background: var(--bg); color: var(--text);
+      }
+      .todo-item {
+        display: flex; align-items: center; gap: 12px; padding: 14px;
+        border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px;
+        background: var(--bg);
+      }
+      .todo-item.done .task { text-decoration: line-through; color: var(--muted); }
+      .todo-details {
+        flex: 1; display: flex; flex-direction: column; gap: 4px;
+      }
+      .task { font-weight: 600; }
+      .meta { color: var(--muted); font-size: 13px; }
+      .edit-input {
+        flex: 1; padding: 6px 10px; border: 1px solid var(--accent); border-radius: 6px;
+        background: var(--card); color: var(--text);
+      }
+      .btn-sm { padding: 6px 12px; font-size: 13px; }
+      .btn-danger { background: var(--danger); }
+      .btn-success { background: var(--success); }
+      .btn-ghost { background: transparent; border: 1px solid var(--border); }
+      .empty { text-align: center; color: var(--muted); padding: 40px 0; }
+      .footer-actions {
+        display: flex; justify-content: space-between; margin-top: 24px;
+        padding-top: 20px; border-top: 1px solid var(--border); align-items: center;
+      }
+      form.inline { display: inline; }
+      @media (max-width: 500px) {
+        .add-form, .controls { flex-direction: column; }
+        .todo-item { flex-wrap: wrap; }
+      }
+
+  body
+    .container
+      h1= title
+      
+      // Add Todo
+      form.add-form(method="post" action="/todos")
+        input(type="text" name="title" placeholder="What needs to be done?" required)
+        input(type="date" name="dueDate" title="Choose the date you want to do this action")
+        button(type="submit") Add
+
+      // Controls
+      form.controls(method="get" action="/todos")
+        input(type="text" name="q" placeholder="Search..." value=query)
+        select(name="filter" onchange="this.form.submit()")
+          option(value="all" selected=filter=='all') All
+          option(value="active" selected=filter=='active') Active
+          option(value="completed" selected=filter=='completed') Completed
+        select(name="sort" onchange="this.form.submit()")
+          option(value="newest" selected=sort=='newest') Newest
+          option(value="oldest" selected=sort=='oldest') Oldest
+          option(value="az" selected=sort=='az') A-Z
+      
+      // Todo List
+      .todo-list
+        if todos.length === 0
+          .empty No todos yet. Add one above! 👆
+        else
+          each todo in todos
+            .todo-item(class=todo.done ? 'done' : '')
+              form.inline(method="post" action="/todos/toggle")
+                input(type="hidden" name="id" value=todo.id)
+                button.btn-sm.btn-success(type="submit") #{todo.done ? '✓' : '○'}
+              
+              if editing == todo.id
+                form.inline(method="post" action="/todos/edit" style="flex:1; display:flex; gap:8px")
+                  input(type="hidden" name="id" value=todo.id)
+                  input.edit-input(type="text" name="title" value=todo.title autofocus)
+                  input(type="date" name="dueDate" value=(todo.dueDate ? new Date(todo.dueDate).toISOString().slice(0,10) : ''))
+                  button.btn-sm(type="submit") Save
+                  a(href="/todos")
+                    button.btn-sm.btn-ghost(type="button") Cancel
+              else
+                .todo-details
+                  span.task= todo.title
+                  if todo.dueDate
+                    - const due = new Date(todo.dueDate).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
+                    span.meta When: #{due}
+                  else
+                    span.meta No date selected
+                a(href="/todos?edit=" + todo.id)
+                  button.btn-sm.btn-ghost(type="button") Edit
+                form.inline(method="post" action="/todos/delete")
+                  input(type="hidden" name="id" value=todo.id)
+                  button.btn-sm.btn-danger(type="submit") Delete
+      
+      // Footer
+      .footer-actions
+        form(method="post" action="/todos/clear")
+          button.btn-danger(type="submit") Clear Completed
+        p(style="color: var(--muted); font-size: 14px;") #{todos.length} item#{todos.length !== 1 ? 's' : ''}
