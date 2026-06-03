@@ -1,4 +1,8 @@
+const { parseBearer } = require('./auth-token.js');
+
 function wantsJson(req) {
+  // Postman/API clients often send Bearer but Accept: */*
+  if (parseBearer(req)) return true;
   if (req.query.format === 'json') return true;
   if (req.is('application/json')) return true;
   const accept = req.get('Accept') || '';

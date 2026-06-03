@@ -136,19 +136,30 @@ router.get('/', requireAuth, async function (req, res) {
 // create a new todo
 router.post('/', requireAuth, async function (req, res) {
     const { title, dueDate, repeatType, repeatOn } = req.body;
-    if (title && title.trim()) {
-        const selectedRepeatType = repeatType === 'weekly' && repeatOn ? 'weekly' : 'none';
-        const dueDateValue = dueDate ? new Date(dueDate) : (selectedRepeatType === 'weekly' ? getNextWeeklyDate(repeatOn) : undefined);
+    if (!title || !title.trim()) {
+        if (wantsJson(req)) {
+            return jsonError(res, 'title is required', 400);
+        }
+        return res.redirect('/todos');
+    }
 
-        await prisma.todo.create({
-            data: {
-                title: title.trim(),
-                dueDate: dueDateValue,
-                repeatType: selectedRepeatType,
-                repeatOn: selectedRepeatType === 'weekly' ? repeatOn : null,
-                userId: req.auth.userId
-            }
-        });
+    const selectedRepeatType = repeatType === 'weekly' && repeatOn ? 'weekly' : 'none';
+    const dueDateValue = dueDate
+        ? new Date(dueDate)
+        : (selectedRepeatType === 'weekly' ? getNextWeeklyDate(repeatOn) : undefined);
+
+    const todo = await prisma.todo.create({
+        data: {
+            title: title.trim(),
+            dueDate: dueDateValue,
+            repeatType: selectedRepeatType,
+            repeatOn: selectedRepeatType === 'weekly' ? repeatOn : null,
+            userId: req.auth.userId
+        }
+    });
+
+    if (wantsJson(req)) {
+        return jsonOk(res, { message: 'Todo created', todo }, 201);
     }
     res.redirect('/todos');
 });
