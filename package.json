@@ -8,8 +8,8 @@
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
-    "build": "prisma generate",
-    "postinstall": "prisma generate"
+    "build": "node scripts/patch-debug.js && prisma generate",
+    "postinstall": "prisma generate && node scripts/patch-debug.js"
   },
   "engines": {
     "node": "22.x"
