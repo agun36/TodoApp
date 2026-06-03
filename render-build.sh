@@ -12,4 +12,8 @@ export NODE_ENV=development
 npm ci
 npm run build
 
+# Verify Express stack installed completely
+test -f node_modules/body-parser/lib/utils.js
+test -f node_modules/.prisma/client/default.js
+
 echo "[render-build] done"
