@@ -17,7 +17,7 @@ model User {
 
 
 model Todo {
-  id         Int      @id @default(autoincrement())
+  id         String   @id @default(uuid())
   title      String
   done       Boolean  @default(false)
   createdAt  DateTime @default(now())

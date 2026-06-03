@@ -63,8 +63,9 @@ function buildRepeatLabel(todo) {
 }
 
 function parseTodoId(value) {
-    const todoId = parseInt(value, 10);
-    return Number.isNaN(todoId) ? null : todoId;
+    if (value === undefined || value === null) return null;
+    const todoId = String(value).trim();
+    return todoId.length > 0 ? todoId : null;
 }
 
 async function updateTodoHandler(req, res, todoId) {
@@ -148,11 +149,11 @@ router.get('/', requireAuth, async function (req, res) {
 
     // Sort
     if (req.query.sort === 'oldest') {
-        todos.sort((a, b) => a.id - b.id);
+        todos.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     } else if (req.query.sort === 'az') {
         todos.sort((a, b) => a.title.localeCompare(b.title));
     } else {
-        todos.sort((a, b) => b.id - a.id); // newest default
+        todos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     }
 
     if (wantsJson(req)) {
@@ -267,16 +268,19 @@ router.delete('/delete/:id', requireAuth, async function (req, res) {
 
 // toggle a todo's completion status
 router.post('/toggle', requireAuth, async function (req, res) {
-    const { id } = req.body;
-    const todo = await prisma.todo.findUnique({ where: { id: parseInt(id) } });
+    const todoId = parseTodoId(req.body.id);
+    if (!todoId) {
+        return res.redirect('/todos');
+    }
+    const todo = await prisma.todo.findFirst({
+        where: { id: todoId, userId: req.auth.userId }
+    });
     if (todo) {
         if (!todo.done) {
-            // If marking as done, delete it
-            await prisma.todo.delete({ where: { id: parseInt(id) } });
+            await prisma.todo.delete({ where: { id: todoId } });
         } else {
-        // If unmarking as done, just set done to false
             await prisma.todo.update({
-                where: { id: parseInt(id) },
+                where: { id: todoId },
                 data: { done: false }
             });
         }
