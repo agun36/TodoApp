@@ -8,8 +8,8 @@
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
-    "build": "node scripts/ensure-node-deps.js && prisma generate",
-    "postinstall": "prisma generate && node scripts/ensure-node-deps.js"
+    "build": "prisma generate && node scripts/ensure-node-deps.js",
+    "postinstall": "prisma generate"
   },
   "engines": {
     "node": "22.x"
@@ -27,6 +27,7 @@
     "morgan": "^1.10.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.10",
+    "path-to-regexp": "^8.4.2",
     "pg": "^8.21.0",
     "prisma": "^7.8.0"
   },

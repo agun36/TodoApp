@@ -6,11 +6,11 @@ if (!process.env.RENDER && process.env.NODE_ENV !== 'production') {
 const { spawnSync } = require('child_process');
 const { getDatabaseUrl } = require('../shared/database-url.js');
 
-function run(command, args) {
+function run(command, args, extraEnv) {
   console.log('[start]', command, args.join(' '));
   const result = spawnSync(command, args, {
     stdio: 'inherit',
-    env: process.env,
+    env: Object.assign({}, process.env, extraEnv || {}),
   });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
@@ -20,6 +20,6 @@ function run(command, args) {
 process.env.DATABASE_URL = getDatabaseUrl();
 console.log('[start] DATABASE_URL is set and looks valid');
 
-run('node', ['./scripts/ensure-node-deps.js']);
+run('node', ['./scripts/ensure-node-deps.js'], { CHECK_EXPRESS: '1' });
 run('node', ['./scripts/migrate-deploy.js']);
 run('node', ['./app.js']);
