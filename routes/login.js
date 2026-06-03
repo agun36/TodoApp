@@ -4,39 +4,30 @@ const { prisma } = require('../shared/prisma.service.js');
 
 // GET login page
 router.get('/', function (req, res) {
-  res.render('login', { message: '', isSignup: req.query.signup ? true : false });
+  if (req.query.signup) {
+    return res.redirect('/signup');
+  }
+  res.render('login', { message: '', isSignup: false, formAction: '/login' });
 });
 
 // POST login form
 router.post('/', async function (req, res) {
   try {
-    const { email, password, isSignup } = req.body;
-
-    if (isSignup === 'true') {
-      // Signup
-      const existingUser = await prisma.user.findUnique({ where: { email } });
-      if (existingUser) {
-        return res.render('login', { message: 'User already exists', isSignup: true });
-      }
-      const newUser = await prisma.user.create({
-        data: { email, password }
+    const { email, password } = req.body;
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || user.password !== password) {
+      return res.render('login', {
+        message: 'Invalid email or password',
+        isSignup: false,
+        formAction: '/login'
       });
-      req.session.userId = newUser.id;
-      req.session.email = newUser.email;
-      return res.redirect('/todos');
-    } else {
-      // Login
-      const user = await prisma.user.findUnique({ where: { email } });
-      if (!user || user.password !== password) {
-        return res.render('login', { message: 'Invalid email or password', isSignup: false });
-      }
-      req.session.userId = user.id;
-      req.session.email = user.email;
-      return res.redirect('/todos');
     }
+    req.session.userId = user.id;
+    req.session.email = user.email;
+    return res.redirect('/todos');
   } catch (error) {
     console.error(error);
-    res.render('login', { message: 'An error occurred', isSignup: false });
+    res.render('login', { message: 'An error occurred', isSignup: false, formAction: '/login' });
   }
 });
 

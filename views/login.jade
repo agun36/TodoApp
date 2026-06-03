@@ -4,14 +4,13 @@ h1= isSignup ? 'Sign Up' : 'Login'
 if message
   p.error= message
 
-form(method="post", action="/login")
+form(method="post", action=formAction || "/login")
   p
     label(for="email") Email:
     input(type="email", name="email", id="email" required)
   p
     label(for="password") Password:
     input(type="password", name="password", id="password" required)
-  input(type="hidden", name="isSignup", value=isSignup ? 'true' : 'false')
   p
     input(type="submit", value=isSignup ? 'Sign Up' : 'Login')
 
@@ -19,6 +18,6 @@ p
   if isSignup
     a(href="/login") Already have an account? Login
   else
-    a(href="/login?signup=true") Don't have an account? Sign up
+    a(href="/signup") Don't have an account? Sign up
 
 include foot.jade

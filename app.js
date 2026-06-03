@@ -12,6 +12,7 @@ var session = require('express-session');
 
 var usersRouter = require('./routes/users.js');
 var loginRouter = require('./routes/login.js');
+var signupRouter = require('./routes/signup.js');
 var todosRouter = require('./routes/todos.js');
 var { startScheduler } = require('./shared/cron.service.js');
 
@@ -38,6 +39,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/users', usersRouter);
 app.use('/login', loginRouter);
+app.use('/signup', signupRouter);
 app.use('/todos', todosRouter);
 
 // Start background scheduler for notifications
