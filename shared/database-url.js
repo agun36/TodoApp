@@ -46,7 +46,6 @@ function getDatabaseUrl() {
   if (!url.includes('sslmode=')) {
     try {
       const parsed = new URL(url);
-      // External Render URLs; internal dpg-* hosts work without forcing SSL
       if (parsed.hostname.includes('render.com')) {
         parsed.searchParams.set('sslmode', 'require');
         return parsed.toString();

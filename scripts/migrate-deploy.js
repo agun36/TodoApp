@@ -13,17 +13,43 @@ try {
   console.log('[migrate] database host:', hostname);
 } catch (_) {}
 
-function run(cmd, options = {}) {
-  return execSync(cmd, {
-    encoding: 'utf8',
-    stdio: options.silent ? 'pipe' : 'inherit',
-    env: process.env,
-    ...options,
+function runPrisma(args, label) {
+  console.log('[migrate]', label);
+  try {
+    const output = execSync('npx prisma ' + args, {
+      encoding: 'utf8',
+      env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 120000,
+    });
+    if (output) process.stdout.write(output);
+    return output;
+  } catch (err) {
+    if (err.stdout) process.stdout.write(err.stdout);
+    if (err.stderr) process.stderr.write(err.stderr);
+    throw err;
+  }
+}
+
+async function testConnection() {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    connectionTimeoutMillis: 15000,
   });
+  try {
+    await client.connect();
+    await client.query('SELECT 1');
+    console.log('[migrate] database connection OK');
+  } finally {
+    await client.end();
+  }
 }
 
 async function userTableExists() {
-  const client = new Client({ connectionString: process.env.DATABASE_URL });
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    connectionTimeoutMillis: 15000,
+  });
   await client.connect();
   try {
     const result = await client.query(
@@ -38,81 +64,89 @@ async function userTableExists() {
   }
 }
 
-function getMigrateStatus() {
-  try {
-    return run('npx prisma migrate status', { silent: true });
-  } catch (err) {
-    return (err.stdout || '') + (err.stderr || '');
-  }
-}
-
 function failedMigrationNames(statusOutput) {
   const names = new Set();
-  const re = /migration [`']([^`']+)[`'] (?:failed|could not be applied)|Following migrations? have failed:\s*[\s\S]*?(\d{14}_[\w-]+)/gi;
+  const re = /migration [`']([^`']+)[`']|The `([^`]+)` migration/gi;
   let match;
   while ((match = re.exec(statusOutput)) !== null) {
     if (match[1]) names.add(match[1]);
     if (match[2]) names.add(match[2]);
   }
-  if (statusOutput.includes('20250601000000_init')) names.add('20250601000000_init');
-  if (statusOutput.includes('20260602160541_add_recurrence')) {
-    names.add('20260602160541_add_recurrence');
-  }
-  return [...names];
+  return [...names].filter(function (name) {
+    return name.startsWith('20');
+  });
 }
 
 async function recoverFailedMigrations() {
-  const status = getMigrateStatus();
+  let status = '';
+  try {
+    status = runPrisma('migrate status', 'checking migration status');
+  } catch (err) {
+    status = (err.stdout || '') + (err.stderr || '');
+  }
+
   if (!/failed/i.test(status)) {
     return false;
   }
 
   const failed = failedMigrationNames(status);
   if (failed.length === 0) {
+    console.error('[migrate] failed migrations detected but could not parse names');
     return false;
   }
 
   const hasUser = await userTableExists();
-  console.log('[migrate] recovering failed migrations:', failed.join(', '));
-  console.log('[migrate] User table exists:', hasUser);
+  console.log('[migrate] recovering:', failed.join(', '), '| User table:', hasUser);
 
   for (const name of failed) {
     const action = hasUser ? 'applied' : 'rolled-back';
-    console.log('[migrate] prisma migrate resolve --' + action, name);
-    run('npx prisma migrate resolve --' + action + ' ' + name, { silent: false });
+    runPrisma('migrate resolve --' + action + ' ' + name, 'resolve --' + action + ' ' + name);
   }
 
   return true;
 }
 
+async function withRetries(fn, label, attempts) {
+  const max = attempts || 3;
+  let lastError;
+  for (let i = 1; i <= max; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      console.error('[migrate]', label, 'attempt', i + '/' + max, 'failed:', err.message);
+      if (i < max) {
+        console.log('[migrate] retrying in 5s (Render Postgres may be waking up)...');
+        await new Promise(function (resolve) {
+          setTimeout(resolve, 5000);
+        });
+      }
+    }
+  }
+  throw lastError;
+}
+
 async function main() {
+  await withRetries(testConnection, 'connection test');
+
   try {
-    run('npx prisma migrate deploy');
+    await withRetries(function () {
+      runPrisma('migrate deploy', 'prisma migrate deploy');
+    }, 'migrate deploy');
     return;
   } catch (firstError) {
-    const detail = firstError.stderr || firstError.stdout || firstError.message || '';
-    if (detail) console.error(detail);
     console.error('[migrate] deploy failed, attempting recovery...');
   }
 
   const recovered = await recoverFailedMigrations();
   if (!recovered) {
-    console.error('[migrate] no failed migrations to recover; see status above');
     process.exit(1);
   }
 
-  try {
-    run('npx prisma migrate deploy');
-  } catch (secondError) {
-    console.error('[migrate] deploy failed after recovery');
-    try {
-      run('npx prisma migrate status');
-    } catch (_) {}
-    process.exit(1);
-  }
+  runPrisma('migrate deploy', 'prisma migrate deploy (after recovery)');
 }
 
 main().catch(function (err) {
-  console.error('[migrate]', err.message);
+  console.error('[migrate] fatal:', err.message);
   process.exit(1);
 });
