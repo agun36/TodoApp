@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 require('dotenv').config();
 const { prisma } = require('../shared/prisma.service.js');
+const { wantsJson, jsonOk, jsonError } = require('../shared/api-response.js');
 
 const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -63,6 +64,9 @@ function buildRepeatLabel(todo) {
 // Middleware to check authentication
 const requireAuth = (req, res, next) => {
     if (!req.session.userId) {
+        if (wantsJson(req)) {
+            return jsonError(res, 'Not authenticated. Log in or sign up first.', 401);
+        }
         return res.redirect('/login');
     }
     next();
@@ -107,6 +111,25 @@ router.get('/', requireAuth, async function (req, res) {
         todos.sort((a, b) => a.title.localeCompare(b.title));
     } else {
         todos.sort((a, b) => b.id - a.id); // newest default
+    }
+
+    if (wantsJson(req)) {
+        return jsonOk(res, {
+            email: req.session.email,
+            todos: todos.map((t) => ({
+                id: t.id,
+                title: t.title,
+                done: t.done,
+                dueDate: t.dueDate,
+                repeatType: t.repeatType,
+                repeatOn: t.repeatOn,
+                dueLabel: t.dueLabel,
+                repeatLabel: t.repeatLabel
+            })),
+            filter: req.query.filter || 'all',
+            sort: req.query.sort || 'newest',
+            query: req.query.q || ''
+        });
     }
 
     res.render('todos', {
