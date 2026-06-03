@@ -21,4 +21,4 @@ process.env.DATABASE_URL = getDatabaseUrl();
 console.log('[start] DATABASE_URL is set and looks valid');
 
 run('node', ['./scripts/migrate-deploy.js']);
-run('node', ['./bin/www']);
+run('node', ['./app.js']);
