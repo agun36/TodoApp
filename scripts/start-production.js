@@ -20,6 +20,6 @@ function run(command, args) {
 process.env.DATABASE_URL = getDatabaseUrl();
 console.log('[start] DATABASE_URL is set and looks valid');
 
-run('node', ['./scripts/patch-debug.js']);
+run('node', ['./scripts/ensure-node-deps.js']);
 run('node', ['./scripts/migrate-deploy.js']);
 run('node', ['./app.js']);
