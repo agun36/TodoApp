@@ -221,13 +221,13 @@ router.post('/edit', requireAuth, async function (req, res) {
     return updateTodoHandler(req, res, parseTodoId(req.body.id));
 });
 
-// edit a todo (API — id in URL)
+// edit a todo (API — id in URL: PUT/PATCH /todos/edit/:id)
 async function editTodoByParam(req, res) {
     return updateTodoHandler(req, res, parseTodoId(req.params.id));
 }
 
-router.put('/:id', requireAuth, editTodoByParam);
-router.patch('/:id', requireAuth, editTodoByParam);
+router.put('/edit/:id', requireAuth, editTodoByParam);
+router.patch('/edit/:id', requireAuth, editTodoByParam);
 
 // delete a todo
 router.post('/delete', requireAuth, async function (req, res) {
