@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
@@ -50,6 +52,11 @@ app.use(function (err, req, res, next) {
   res.render('error');
 });
 
-app.listen(3000, () => {
-  console.log('Server is running on port 3000');
-});
+module.exports = app;
+
+if (require.main === module) {
+  var port = process.env.PORT || 3000;
+  app.listen(port, function () {
+    console.log('Server is running on port ' + port);
+  });
+}
