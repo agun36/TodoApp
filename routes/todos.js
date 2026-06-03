@@ -229,11 +229,40 @@ async function editTodoByParam(req, res) {
 router.put('/edit/:id', requireAuth, editTodoByParam);
 router.patch('/edit/:id', requireAuth, editTodoByParam);
 
-// delete a todo
+async function deleteTodoHandler(req, res, todoId) {
+    if (!todoId) {
+        if (wantsJson(req)) {
+            return jsonError(res, 'Invalid todo id', 400);
+        }
+        return res.redirect('/todos');
+    }
+
+    const existing = await prisma.todo.findFirst({
+        where: { id: todoId, userId: req.auth.userId }
+    });
+    if (!existing) {
+        if (wantsJson(req)) {
+            return jsonError(res, 'Todo not found', 404);
+        }
+        return res.redirect('/todos');
+    }
+
+    await prisma.todo.delete({ where: { id: todoId } });
+
+    if (wantsJson(req)) {
+        return jsonOk(res, { message: 'Todo deleted', id: todoId });
+    }
+    return res.redirect('/todos');
+}
+
+// delete a todo (HTML form — id in body)
 router.post('/delete', requireAuth, async function (req, res) {
-    const { id } = req.body;
-    await prisma.todo.delete({ where: { id: parseInt(id) } });
-    res.redirect('/todos');
+    return deleteTodoHandler(req, res, parseTodoId(req.body.id));
+});
+
+// delete a todo (API — id in URL: DELETE /todos/delete/:id)
+router.delete('/delete/:id', requireAuth, async function (req, res) {
+    return deleteTodoHandler(req, res, parseTodoId(req.params.id));
 });
 
 // toggle a todo's completion status
