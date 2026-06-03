@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-require('dotenv').config();
+if (!process.env.RENDER && process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 const { execSync } = require('child_process');
 const { Client } = require('pg');
 const { getDatabaseUrl } = require('../shared/database-url.js');

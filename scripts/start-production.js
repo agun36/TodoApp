@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-require('dotenv').config();
+// On Render, env vars come from the dashboard — do not load local .env
+if (!process.env.RENDER && process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 const { spawnSync } = require('child_process');
 const { getDatabaseUrl } = require('../shared/database-url.js');
 

@@ -1,15 +1,36 @@
 /**
  * Normalizes DATABASE_URL for Prisma and pg (Render, local, etc.).
  */
+function isProductionRuntime() {
+  return (
+    process.env.NODE_ENV === 'production' ||
+    process.env.RENDER === 'true' ||
+    Boolean(process.env.RENDER_SERVICE_ID)
+  );
+}
+
 function getDatabaseUrl() {
   const raw = process.env.DATABASE_URL;
   if (!raw || !String(raw).trim()) {
     throw new Error(
-      'DATABASE_URL is not set. On Render: create a PostgreSQL database, then link it to this web service (or paste the Internal Database URL into DATABASE_URL).'
+      'DATABASE_URL is not set. On Render: open your Postgres service, copy the Internal Database URL, and set it on the web service (or link the database so Render sets DATABASE_URL automatically).'
     );
   }
 
   let url = String(raw).trim().replace(/^["']|["']$/g, '');
+
+  if (isProductionRuntime()) {
+    try {
+      const { hostname } = new URL(url);
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        throw new Error(
+          'DATABASE_URL points to localhost, which cannot work on Render. Replace it with the Internal Database URL from your Render PostgreSQL service (host looks like dpg-xxxxx-a, not localhost).'
+        );
+      }
+    } catch (err) {
+      if (err.message.includes('localhost')) throw err;
+    }
+  }
 
   if (url.startsWith('postgres://')) {
     url = 'postgresql://' + url.slice('postgres://'.length);

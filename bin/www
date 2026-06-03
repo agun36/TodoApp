@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-require('dotenv').config();
+if (!process.env.RENDER && process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 
 /**
  * Module dependencies.
