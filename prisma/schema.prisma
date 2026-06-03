@@ -9,7 +9,7 @@ datasource db {
 }
 
 model User {
-  id       Int     @id @default(autoincrement())
+  id       String  @id @default(uuid())
   email    String  @unique
   password String
   todos    Todo[]
@@ -24,6 +24,6 @@ model Todo {
   dueDate    DateTime?
   repeatType String?  @default("none")
   repeatOn   String?
-  userId     Int
+  userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
