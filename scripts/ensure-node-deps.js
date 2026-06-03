@@ -6,59 +6,42 @@ const ROOT = path.join(__dirname, '..');
 const VENDOR_DIR = path.join(__dirname, 'vendor');
 
 const FILE_PATCHES = [
-  {
-    name: 'debug',
-    vendorFile: path.join(VENDOR_DIR, 'debug-common.js'),
-    target: path.join(ROOT, 'node_modules', 'debug', 'src', 'common.js'),
-  },
-  {
-    name: 'mime-types',
-    vendorFile: path.join(VENDOR_DIR, 'mimeScore.js'),
-    target: path.join(ROOT, 'node_modules', 'mime-types', 'mimeScore.js'),
-  },
+  ['debug', 'debug-common.js', 'node_modules/debug/src/common.js'],
+  ['mime-types', 'mimeScore.js', 'node_modules/mime-types/mimeScore.js'],
 ];
 
-const DIR_PATCHES = [
-  {
-    name: 'path-to-regexp',
-    vendorDir: path.join(VENDOR_DIR, 'path-to-regexp-dist'),
-    targetDir: path.join(ROOT, 'node_modules', 'path-to-regexp', 'dist'),
-  },
+const PACKAGE_PATCHES = [
+  ['path-to-regexp', 'path-to-regexp-dist', 'node_modules/path-to-regexp/dist'],
+  ['iconv-lite', 'iconv-lite', 'node_modules/iconv-lite'],
 ];
 
-for (const patch of FILE_PATCHES) {
-  if (!fs.existsSync(patch.vendorFile)) {
-    console.error('[deps] missing vendor file:', patch.vendorFile);
-    process.exit(1);
+function copyFile(vendorFile, targetFile) {
+  if (!fs.existsSync(vendorFile)) {
+    throw new Error('missing vendor file: ' + vendorFile);
   }
-  fs.mkdirSync(path.dirname(patch.target), { recursive: true });
-  fs.copyFileSync(patch.vendorFile, patch.target);
-  console.log('[deps] patched', patch.name);
+  fs.mkdirSync(path.dirname(targetFile), { recursive: true });
+  fs.copyFileSync(vendorFile, targetFile);
 }
 
-for (const patch of DIR_PATCHES) {
-  if (!fs.existsSync(patch.vendorDir)) {
-    console.error('[deps] missing vendor dir:', patch.vendorDir);
-    process.exit(1);
+function copyDir(vendorDir, targetDir) {
+  if (!fs.existsSync(vendorDir)) {
+    throw new Error('missing vendor dir: ' + vendorDir);
   }
-  fs.mkdirSync(patch.targetDir, { recursive: true });
-  for (const file of fs.readdirSync(patch.vendorDir)) {
-    fs.copyFileSync(
-      path.join(patch.vendorDir, file),
-      path.join(patch.targetDir, file)
-    );
+  fs.mkdirSync(path.dirname(targetDir), { recursive: true });
+  if (fs.existsSync(targetDir)) {
+    fs.rmSync(targetDir, { recursive: true, force: true });
   }
-  console.log('[deps] patched', patch.name);
+  fs.cpSync(vendorDir, targetDir, { recursive: true });
 }
 
-if (process.env.CHECK_EXPRESS === '1') {
-  try {
-    require('express');
-    console.log('[deps] express OK');
-  } catch (err) {
-    console.error('[deps] express failed:', err.message);
-    process.exit(1);
-  }
+for (const [name, vendorFile, targetRel] of FILE_PATCHES) {
+  copyFile(path.join(VENDOR_DIR, vendorFile), path.join(ROOT, targetRel));
+  console.log('[deps] patched', name);
+}
+
+for (const [name, vendorDir, targetRel] of PACKAGE_PATCHES) {
+  copyDir(path.join(VENDOR_DIR, vendorDir), path.join(ROOT, targetRel));
+  console.log('[deps] patched', name);
 }
 
 console.log('[deps] done');

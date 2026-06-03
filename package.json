@@ -9,7 +9,8 @@
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "build": "prisma generate && node scripts/ensure-node-deps.js",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "render-build": "bash render-build.sh"
   },
   "engines": {
     "node": "22.x"
