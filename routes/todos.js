@@ -62,6 +62,58 @@ function buildRepeatLabel(todo) {
     return null;
 }
 
+function parseTodoId(value) {
+    const todoId = parseInt(value, 10);
+    return Number.isNaN(todoId) ? null : todoId;
+}
+
+async function updateTodoHandler(req, res, todoId) {
+    const { title, dueDate, repeatType, repeatOn } = req.body;
+
+    if (!todoId) {
+        if (wantsJson(req)) {
+            return jsonError(res, 'Invalid todo id', 400);
+        }
+        return res.redirect('/todos');
+    }
+    if (!title || !title.trim()) {
+        if (wantsJson(req)) {
+            return jsonError(res, 'title is required', 400);
+        }
+        return res.redirect('/todos');
+    }
+
+    const existing = await prisma.todo.findFirst({
+        where: { id: todoId, userId: req.auth.userId }
+    });
+    if (!existing) {
+        if (wantsJson(req)) {
+            return jsonError(res, 'Todo not found', 404);
+        }
+        return res.redirect('/todos');
+    }
+
+    const selectedRepeatType = repeatType === 'weekly' && repeatOn ? 'weekly' : 'none';
+    const dueDateValue = dueDate
+        ? new Date(dueDate)
+        : (selectedRepeatType === 'weekly' ? getNextWeeklyDate(repeatOn) : null);
+
+    const todo = await prisma.todo.update({
+        where: { id: todoId },
+        data: {
+            title: title.trim(),
+            dueDate: dueDateValue,
+            repeatType: selectedRepeatType,
+            repeatOn: selectedRepeatType === 'weekly' ? repeatOn : null
+        }
+    });
+
+    if (wantsJson(req)) {
+        return jsonOk(res, { message: 'Todo updated', todo });
+    }
+    return res.redirect('/todos');
+}
+
 // GET todos page
 router.get('/', requireAuth, async function (req, res) {
     let todos = await prisma.todo.findMany({
@@ -164,25 +216,18 @@ router.post('/', requireAuth, async function (req, res) {
     res.redirect('/todos');
 });
 
-// edit a todo
+// edit a todo (HTML form — id in body)
 router.post('/edit', requireAuth, async function (req, res) {
-    const { id, title, dueDate, repeatType, repeatOn } = req.body;
-    if (title && title.trim()) {
-        const selectedRepeatType = repeatType === 'weekly' && repeatOn ? 'weekly' : 'none';
-        const dueDateValue = dueDate ? new Date(dueDate) : (selectedRepeatType === 'weekly' ? getNextWeeklyDate(repeatOn) : null);
-
-        await prisma.todo.update({
-            where: { id: parseInt(id) },
-            data: {
-                title: title.trim(),
-                dueDate: dueDateValue,
-                repeatType: selectedRepeatType,
-                repeatOn: selectedRepeatType === 'weekly' ? repeatOn : null
-            }
-        });
-    }
-    res.redirect('/todos');
+    return updateTodoHandler(req, res, parseTodoId(req.body.id));
 });
+
+// edit a todo (API — id in URL)
+async function editTodoByParam(req, res) {
+    return updateTodoHandler(req, res, parseTodoId(req.params.id));
+}
+
+router.put('/:id', requireAuth, editTodoByParam);
+router.patch('/:id', requireAuth, editTodoByParam);
 
 // delete a todo
 router.post('/delete', requireAuth, async function (req, res) {
