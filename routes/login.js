@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 const { prisma } = require('../shared/prisma.service.js');
 const { wantsJson, jsonOk, jsonError } = require('../shared/api-response.js');
+const { createToken } = require('../shared/auth-token.js');
 
 // GET login page
 router.get('/', function (req, res) {
@@ -11,7 +12,8 @@ router.get('/', function (req, res) {
   if (wantsJson(req)) {
     return jsonOk(res, {
       message: 'POST with email and password to log in',
-      fields: ['email', 'password']
+      fields: ['email', 'password'],
+      auth: 'JSON response includes a bearer token; use Authorization: Bearer <token>'
     });
   }
   res.render('login', { message: '', isSignup: false, formAction: '/login' });
@@ -37,7 +39,8 @@ router.post('/', async function (req, res) {
     if (wantsJson(req)) {
       return jsonOk(res, {
         message: 'Logged in',
-        user: { id: user.id, email: user.email }
+        user: { id: user.id, email: user.email },
+        token: createToken(user.id, user.email)
       });
     }
     return res.redirect('/todos');

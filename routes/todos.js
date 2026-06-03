@@ -3,6 +3,7 @@ const router = express.Router();
 require('dotenv').config();
 const { prisma } = require('../shared/prisma.service.js');
 const { wantsJson, jsonOk, jsonError } = require('../shared/api-response.js');
+const { requireAuth } = require('../shared/require-auth.js');
 
 const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -61,21 +62,10 @@ function buildRepeatLabel(todo) {
     return null;
 }
 
-// Middleware to check authentication
-const requireAuth = (req, res, next) => {
-    if (!req.session.userId) {
-        if (wantsJson(req)) {
-            return jsonError(res, 'Not authenticated. Log in or sign up first.', 401);
-        }
-        return res.redirect('/login');
-    }
-    next();
-};
-
 // GET todos page
 router.get('/', requireAuth, async function (req, res) {
     let todos = await prisma.todo.findMany({
-        where: { userId: req.session.userId }
+        where: { userId: req.auth.userId }
     });
 
     todos = todos.map((todo) => {
@@ -115,7 +105,7 @@ router.get('/', requireAuth, async function (req, res) {
 
     if (wantsJson(req)) {
         return jsonOk(res, {
-            email: req.session.email,
+            email: req.auth.email,
             todos: todos.map((t) => ({
                 id: t.id,
                 title: t.title,
@@ -139,7 +129,7 @@ router.get('/', requireAuth, async function (req, res) {
         sort: req.query.sort || 'newest',
         query: req.query.q || '',
         editing: req.query.edit || null,
-        email: req.session.email
+        email: req.auth.email
     });
 });
 
@@ -156,7 +146,7 @@ router.post('/', requireAuth, async function (req, res) {
                 dueDate: dueDateValue,
                 repeatType: selectedRepeatType,
                 repeatOn: selectedRepeatType === 'weekly' ? repeatOn : null,
-                userId: req.session.userId
+                userId: req.auth.userId
             }
         });
     }
@@ -214,7 +204,7 @@ router.post('/clear', requireAuth, async function (req, res) {
     await prisma.todo.deleteMany({
         where: {
             done: true,
-            userId: req.session.userId
+            userId: req.auth.userId
         }
     });
     res.redirect('/todos');
