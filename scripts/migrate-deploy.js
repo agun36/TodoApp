@@ -1,10 +1,18 @@
 #!/usr/bin/env node
-if (!process.env.RENDER && process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-}
+const path = require('path');
 const { execSync } = require('child_process');
 const { Client } = require('pg');
 const { getDatabaseUrl } = require('../shared/database-url.js');
+
+if (!process.env.RENDER && process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
+
+const PRISMA_CLI = path.join(__dirname, '..', 'node_modules', 'prisma', 'build', 'index.js');
+const REQUIRED_MIGRATIONS = [
+  '20250601000000_init',
+  '20260602160541_add_recurrence',
+];
 
 process.env.DATABASE_URL = getDatabaseUrl();
 
@@ -16,7 +24,7 @@ try {
 function runPrisma(args, label) {
   console.log('[migrate]', label);
   try {
-    const output = execSync('npx prisma ' + args, {
+    const output = execSync('node ' + JSON.stringify(PRISMA_CLI) + ' ' + args, {
       encoding: 'utf8',
       env: process.env,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -25,17 +33,22 @@ function runPrisma(args, label) {
     if (output) process.stdout.write(output);
     return output;
   } catch (err) {
+    console.error('[migrate] prisma exit code:', err.status);
     if (err.stdout) process.stdout.write(err.stdout);
     if (err.stderr) process.stderr.write(err.stderr);
     throw err;
   }
 }
 
-async function testConnection() {
-  const client = new Client({
+function pgClient() {
+  return new Client({
     connectionString: process.env.DATABASE_URL,
     connectionTimeoutMillis: 15000,
   });
+}
+
+async function testConnection() {
+  const client = pgClient();
   try {
     await client.connect();
     await client.query('SELECT 1');
@@ -45,11 +58,38 @@ async function testConnection() {
   }
 }
 
-async function userTableExists() {
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    connectionTimeoutMillis: 15000,
+async function getAppliedMigrations() {
+  const client = pgClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `SELECT migration_name FROM "_prisma_migrations"
+       WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`
+    );
+    return result.rows.map(function (row) {
+      return row.migration_name;
+    });
+  } catch (err) {
+    if (err.code === '42P01') return [];
+    throw err;
+  } finally {
+    await client.end();
+  }
+}
+
+async function migrationsUpToDate() {
+  const applied = await getAppliedMigrations();
+  const ok = REQUIRED_MIGRATIONS.every(function (name) {
+    return applied.includes(name);
   });
+  if (ok) {
+    console.log('[migrate] applied migrations:', applied.join(', '));
+  }
+  return ok;
+}
+
+async function userTableExists() {
+  const client = pgClient();
   await client.connect();
   try {
     const result = await client.query(
@@ -106,36 +146,24 @@ async function recoverFailedMigrations() {
   return true;
 }
 
-async function withRetries(fn, label, attempts) {
-  const max = attempts || 3;
-  let lastError;
-  for (let i = 1; i <= max; i++) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastError = err;
-      console.error('[migrate]', label, 'attempt', i + '/' + max, 'failed:', err.message);
-      if (i < max) {
-        console.log('[migrate] retrying in 5s (Render Postgres may be waking up)...');
-        await new Promise(function (resolve) {
-          setTimeout(resolve, 5000);
-        });
-      }
-    }
-  }
-  throw lastError;
-}
-
 async function main() {
-  await withRetries(testConnection, 'connection test');
+  await testConnection();
+
+  if (await migrationsUpToDate()) {
+    console.log('[migrate] schema up to date, skipping migrate deploy');
+    return;
+  }
 
   try {
-    await withRetries(function () {
-      runPrisma('migrate deploy', 'prisma migrate deploy');
-    }, 'migrate deploy');
+    runPrisma('migrate deploy', 'prisma migrate deploy');
     return;
   } catch (firstError) {
     console.error('[migrate] deploy failed, attempting recovery...');
+  }
+
+  if (await migrationsUpToDate()) {
+    console.log('[migrate] schema up to date after partial deploy');
+    return;
   }
 
   const recovered = await recoverFailedMigrations();
