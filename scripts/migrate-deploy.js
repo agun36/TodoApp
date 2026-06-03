@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const { Client } = require('pg');
@@ -9,10 +10,18 @@ if (!process.env.RENDER && process.env.NODE_ENV !== 'production') {
 }
 
 const PRISMA_CLI = path.join(__dirname, '..', 'node_modules', 'prisma', 'build', 'index.js');
-const REQUIRED_MIGRATIONS = [
-  '20250601000000_init',
-  '20260602160541_add_recurrence',
-];
+const MIGRATIONS_DIR = path.join(__dirname, '..', 'prisma', 'migrations');
+
+function getRequiredMigrations() {
+  return fs.readdirSync(MIGRATIONS_DIR)
+    .filter(function (name) {
+      return /^\d{14}_/.test(name)
+        && fs.existsSync(path.join(MIGRATIONS_DIR, name, 'migration.sql'));
+    })
+    .sort();
+}
+
+const REQUIRED_MIGRATIONS = getRequiredMigrations();
 
 process.env.DATABASE_URL = getDatabaseUrl();
 
@@ -149,8 +158,10 @@ async function recoverFailedMigrations() {
 async function main() {
   await testConnection();
 
+  console.log('[migrate] required:', REQUIRED_MIGRATIONS.join(', '));
+
   if (await migrationsUpToDate()) {
-    console.log('[migrate] schema up to date, skipping migrate deploy');
+    console.log('[migrate] all migrations applied, skipping migrate deploy');
     return;
   }
 
