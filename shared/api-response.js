@@ -1,6 +1,8 @@
 function wantsJson(req) {
   if (req.query.format === 'json') return true;
   if (req.is('application/json')) return true;
+  const accept = req.get('Accept') || '';
+  if (accept.includes('application/json')) return true;
   return req.accepts(['html', 'json']) === 'json';
 }
 

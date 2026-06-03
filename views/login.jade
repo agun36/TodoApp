@@ -1,23 +1,23 @@
 include head.jade
 
-h1= isSignup ? 'Sign Up' : 'Login'
-if message
-  p.error= message
+    h1= isSignup ? 'Sign Up' : 'Login'
+    if message
+      p.error= message
 
-form(method="post", action=formAction || "/login")
-  p
-    label(for="email") Email:
-    input(type="email", name="email", id="email" required)
-  p
-    label(for="password") Password:
-    input(type="password", name="password", id="password" required)
-  p
-    input(type="submit", value=isSignup ? 'Sign Up' : 'Login')
+    form(method="post", action=formAction || "/login")
+      p
+        label(for="email") Email:
+        input(type="email", name="email", id="email" required)
+      p
+        label(for="password") Password:
+        input(type="password", name="password", id="password" required)
+      p
+        input(type="submit", value=isSignup ? 'Sign Up' : 'Login')
 
-p
-  if isSignup
-    a(href="/login") Already have an account? Login
-  else
-    a(href="/signup") Don't have an account? Sign up
+    p
+      if isSignup
+        a(href="/login") Already have an account? Login
+      else
+        a(href="/signup") Don't have an account? Sign up
 
 include foot.jade
