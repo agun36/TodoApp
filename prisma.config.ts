@@ -3,12 +3,36 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+function databaseUrl(): string {
+  const raw = process.env.DATABASE_URL;
+  if (!raw?.trim()) {
+    throw new Error(
+      "DATABASE_URL is not set. On Render, link your Postgres service to this web service or set DATABASE_URL to the database Internal URL."
+    );
+  }
+
+  let url = raw.trim().replace(/^["']|["']$/g, "");
+
+  if (url.startsWith("postgres://")) {
+    url = "postgresql://" + url.slice("postgres://".length);
+  }
+
+  if (!url.startsWith("postgresql://")) {
+    const scheme = url.includes(":") ? url.split(":")[0] : "(no scheme)";
+    throw new Error(
+      `DATABASE_URL must start with postgresql:// or postgres:// (got "${scheme}:"). Use Render's Internal Database URL.`
+    );
+  }
+
+  return url;
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env.DATABASE_URL!,
+    url: databaseUrl(),
   },
 });

@@ -1,9 +1,20 @@
+databases:
+  - name: todo-db
+    plan: free
+    databaseName: todo
+    user: todo
+
 services:
   - type: web
     name: todo-app
     runtime: node
     buildCommand: npm install && npm run build
+    preDeployCommand: npx prisma migrate deploy
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: todo-db
+          property: connectionString
