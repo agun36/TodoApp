@@ -22,9 +22,17 @@ function getDatabaseUrl() {
     );
   }
 
-  if (url.includes('render.com') && !url.includes('sslmode=')) {
-    url += url.includes('?') ? '&' : '?';
-    url += 'sslmode=require';
+  if (!url.includes('sslmode=')) {
+    try {
+      const parsed = new URL(url);
+      // External Render URLs; internal dpg-* hosts work without forcing SSL
+      if (parsed.hostname.includes('render.com')) {
+        parsed.searchParams.set('sslmode', 'require');
+        return parsed.toString();
+      }
+    } catch (_) {
+      // keep url as-is if parsing fails
+    }
   }
 
   return url;

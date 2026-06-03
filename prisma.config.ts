@@ -23,9 +23,16 @@ function databaseUrl(): string {
     );
   }
 
-  if (url.includes("render.com") && !url.includes("sslmode=")) {
-    url += url.includes("?") ? "&" : "?";
-    url += "sslmode=require";
+  if (!url.includes("sslmode=")) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname.includes("render.com")) {
+        parsed.searchParams.set("sslmode", "require");
+        return parsed.toString();
+      }
+    } catch (_) {
+      // keep url as-is
+    }
   }
 
   return url;

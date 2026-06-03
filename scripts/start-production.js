@@ -5,19 +5,17 @@ const { getDatabaseUrl } = require('../shared/database-url.js');
 
 function run(command, args) {
   console.log('[start]', command, args.join(' '));
-  const result = spawnSync(command, args, { stdio: 'inherit', env: process.env });
+  const result = spawnSync(command, args, {
+    stdio: 'inherit',
+    env: process.env,
+  });
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
 }
 
-try {
-  getDatabaseUrl();
-  console.log('[start] DATABASE_URL is set and looks valid');
-} catch (err) {
-  console.error('[start]', err.message);
-  process.exit(1);
-}
+process.env.DATABASE_URL = getDatabaseUrl();
+console.log('[start] DATABASE_URL is set and looks valid');
 
-run('npx', ['prisma', 'migrate', 'deploy']);
+run('node', ['./scripts/migrate-deploy.js']);
 run('node', ['./bin/www']);
