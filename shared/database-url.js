@@ -22,6 +22,11 @@ function getDatabaseUrl() {
     );
   }
 
+  if (url.includes('render.com') && !url.includes('sslmode=')) {
+    url += url.includes('?') ? '&' : '?';
+    url += 'sslmode=require';
+  }
+
   return url;
 }
 

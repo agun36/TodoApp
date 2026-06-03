@@ -6,9 +6,8 @@ import { defineConfig } from "prisma/config";
 function databaseUrl(): string {
   const raw = process.env.DATABASE_URL;
   if (!raw?.trim()) {
-    throw new Error(
-      "DATABASE_URL is not set. On Render, link your Postgres service to this web service or set DATABASE_URL to the database Internal URL."
-    );
+    // prisma generate (postinstall) does not connect; migrate deploy needs a real URL at runtime
+    return "postgresql://127.0.0.1:5432/placeholder";
   }
 
   let url = raw.trim().replace(/^["']|["']$/g, "");
@@ -22,6 +21,11 @@ function databaseUrl(): string {
     throw new Error(
       `DATABASE_URL must start with postgresql:// or postgres:// (got "${scheme}:"). Use Render's Internal Database URL.`
     );
+  }
+
+  if (url.includes("render.com") && !url.includes("sslmode=")) {
+    url += url.includes("?") ? "&" : "?";
+    url += "sslmode=require";
   }
 
   return url;
