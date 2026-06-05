@@ -14,15 +14,21 @@ var usersRouter = require('./routes/users.js');
 var loginRouter = require('./routes/login.js');
 var signupRouter = require('./routes/signup.js');
 var todosRouter = require('./routes/todos.js');
+var projectsRouter = require('./routes/projects.js');
 var { startScheduler } = require('./shared/cron.service.js');
 
 var app = express();
+
+var corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5173')
+  .split(',')
+  .map(function (origin) { return origin.trim(); })
+  .filter(Boolean);
 
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: corsOrigins,
   credentials: true
 }));
 app.use(logger('dev'));
@@ -41,6 +47,7 @@ app.use('/users', usersRouter);
 app.use('/login', loginRouter);
 app.use('/signup', signupRouter);
 app.use('/todos', todosRouter);
+app.use('/projects', projectsRouter);
 
 // Start background scheduler for notifications
 startScheduler();

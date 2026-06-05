@@ -30,7 +30,16 @@ function databaseUrl(): string {
         parsed.searchParams.set("sslmode", "require");
         return parsed.toString();
       }
-    } catch (_) {
+
+      if (/^dpg-[a-z0-9-]+$/i.test(parsed.hostname)) {
+        throw new Error(
+          `DATABASE_URL uses Render internal host "${parsed.hostname}". ` +
+            "From your laptop use the External Database URL (host ends with .render.com), " +
+            "or push to Render and let deploy run migrations."
+        );
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Render internal")) throw err;
       // keep url as-is
     }
   }
