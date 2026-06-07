@@ -3,6 +3,14 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+function isProductionRuntime(): boolean {
+  return (
+    process.env.NODE_ENV === "production" ||
+    process.env.RENDER === "true" ||
+    Boolean(process.env.RENDER_SERVICE_ID)
+  );
+}
+
 function databaseUrl(): string {
   const raw = process.env.DATABASE_URL;
   if (!raw?.trim()) {
@@ -31,7 +39,11 @@ function databaseUrl(): string {
         return parsed.toString();
       }
 
-      if (/^dpg-[a-z0-9-]+$/i.test(parsed.hostname)) {
+      // Internal Render hostname — allowed on Render; blocked locally (use External URL)
+      if (
+        !isProductionRuntime() &&
+        /^dpg-[a-z0-9-]+$/i.test(parsed.hostname)
+      ) {
         throw new Error(
           `DATABASE_URL uses Render internal host "${parsed.hostname}". ` +
             "From your laptop use the External Database URL (host ends with .render.com), " +

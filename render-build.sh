@@ -8,6 +8,7 @@ rm -rf node_modules
 
 export NPM_CONFIG_PRODUCTION=false
 export NODE_ENV=development
+export RENDER="${RENDER:-true}"
 
 npm ci
 npm run build
