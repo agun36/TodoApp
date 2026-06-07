@@ -1,6 +1,10 @@
 const cron = require('node-cron');
 const { prisma } = require('./prisma.service');
-const { sendDailyDigest } = require('./notification.service');
+const { sendDailyDigest, sendMeetingNotification } = require('./notification.service');
+const { listMeetingsForDay } = require('./meeting.service.js');
+const { getProjectMembers } = require('./project.service.js');
+
+const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
  * Start background scheduler for sending daily todo reminders
@@ -40,7 +44,13 @@ function startScheduler() {
                 todosByUser[email].push({
                     title: todo.title,
                     dueDate: todo.dueDate,
-                    repeatLabel: todo.repeatType === 'weekly' ? `Repeats every ${todo.repeatOn}` : null
+                    repeatLabel: (() => {
+                        if (todo.repeatType !== 'weekly' || !todo.repeatOn) return null;
+                        const days = String(todo.repeatOn).split(',').map((d) => d.trim()).filter(Boolean);
+                        if (days.length === 1) return `Repeats every ${days[0]}`;
+                        if (days.length > 1) return `Repeats every ${days.join(', ')}`;
+                        return null;
+                    })()
                 });
             });
 
@@ -50,6 +60,23 @@ function startScheduler() {
             }
 
             console.log(`[Scheduler] Daily reminders completed - ${Object.keys(todosByUser).length} users notified`);
+
+            const todayName = weekdays[new Date().getDay()];
+            const meetingsToday = await listMeetingsForDay(todayName);
+            console.log(`[Scheduler] Found ${meetingsToday.length} team meeting(s) for ${todayName}`);
+
+            for (const meeting of meetingsToday) {
+                const members = await getProjectMembers(meeting.projectId);
+                for (const member of members) {
+                    await sendMeetingNotification({
+                        to: member.email,
+                        meeting,
+                        actorEmail: meeting.createdBy?.email || 'TaskFlow',
+                        kind: 'reminder',
+                        todayLabel: todayName
+                    });
+                }
+            }
         } catch (error) {
             console.error('[Scheduler Error]', error.message);
         }

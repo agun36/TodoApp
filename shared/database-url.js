@@ -50,7 +50,25 @@ function getDatabaseUrl() {
         parsed.searchParams.set('sslmode', 'require');
         return parsed.toString();
       }
-    } catch (_) {
+
+      // Render internal hostname (dpg-xxx-a) — only reachable from Render services
+      if (
+        !isProductionRuntime() &&
+        /^dpg-[a-z0-9-]+$/i.test(parsed.hostname)
+      ) {
+        throw new Error(
+          'DATABASE_URL uses Render\'s internal hostname (' +
+            parsed.hostname +
+            '), which is not reachable from your laptop. ' +
+            'For local migrations: in Render → Postgres → Connections, copy the External Database URL ' +
+            'into .env (host ends with .render.com). ' +
+            'Or push your code and let Render run migrations on deploy (npm start runs migrate-deploy.js).'
+        );
+      }
+    } catch (err) {
+      if (err.message.includes('internal hostname') || err.message.includes('localhost')) {
+        throw err;
+      }
       // keep url as-is if parsing fails
     }
   }

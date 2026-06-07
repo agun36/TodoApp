@@ -49,21 +49,60 @@ function runPrisma(args, label) {
   }
 }
 
+function databaseEndpoint() {
+  try {
+    const parsed = new URL(process.env.DATABASE_URL);
+    const port = parsed.port || '5432';
+    return parsed.hostname + ':' + port;
+  } catch (_) {
+    return '(unknown host)';
+  }
+}
+
 function pgClient() {
   return new Client({
     connectionString: process.env.DATABASE_URL,
-    connectionTimeoutMillis: 15000,
+    connectionTimeoutMillis: 30000,
+  });
+}
+
+function sleep(ms) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve, ms);
   });
 }
 
 async function testConnection() {
-  const client = pgClient();
-  try {
-    await client.connect();
-    await client.query('SELECT 1');
-    console.log('[migrate] database connection OK');
-  } finally {
-    await client.end();
+  const endpoint = databaseEndpoint();
+  const maxAttempts = 5;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const client = pgClient();
+    try {
+      await client.connect();
+      await client.query('SELECT 1');
+      console.log('[migrate] database connection OK');
+      return;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (attempt < maxAttempts) {
+        console.warn(
+          '[migrate] database connect attempt ' + attempt + '/' + maxAttempts +
+          ' failed (' + message + '), retrying...'
+        );
+        await sleep(2000 * attempt);
+      } else {
+        throw new Error(
+          'Could not connect to PostgreSQL at ' + endpoint + ' after ' + maxAttempts +
+          ' attempts. Ensure the database is running and DATABASE_URL in .env is correct. ' +
+          'Last error: ' + message
+        );
+      }
+    } finally {
+      try {
+        await client.end();
+      } catch (_) {}
+    }
   }
 }
 
@@ -162,27 +201,25 @@ async function main() {
 
   if (await migrationsUpToDate()) {
     console.log('[migrate] all migrations applied, skipping migrate deploy');
-    return;
+  } else {
+    try {
+      runPrisma('migrate deploy', 'prisma migrate deploy');
+    } catch (firstError) {
+      console.error('[migrate] deploy failed, attempting recovery...');
+
+      if (await migrationsUpToDate()) {
+        console.log('[migrate] schema up to date after partial deploy');
+      } else {
+        const recovered = await recoverFailedMigrations();
+        if (!recovered) {
+          process.exit(1);
+        }
+        runPrisma('migrate deploy', 'prisma migrate deploy (after recovery)');
+      }
+    }
   }
 
-  try {
-    runPrisma('migrate deploy', 'prisma migrate deploy');
-    return;
-  } catch (firstError) {
-    console.error('[migrate] deploy failed, attempting recovery...');
-  }
-
-  if (await migrationsUpToDate()) {
-    console.log('[migrate] schema up to date after partial deploy');
-    return;
-  }
-
-  const recovered = await recoverFailedMigrations();
-  if (!recovered) {
-    process.exit(1);
-  }
-
-  runPrisma('migrate deploy', 'prisma migrate deploy (after recovery)');
+  runPrisma('generate', 'prisma generate');
 }
 
 main().catch(function (err) {

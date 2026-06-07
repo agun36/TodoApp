@@ -1,0 +1,111 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    title= title
+    style.
+      :root {
+        --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8;
+        --accent: #3b82f6; --danger: #ef4444; --success: #22c55e; --border: #334155;
+        --radius: 12px;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: var(--bg); color: var(--text); min-height: 100vh;
+        display: flex; justify-content: center; padding: 40px 20px;
+      }
+      .container {
+        width: 100%; max-width: 720px; background: var(--card); border-radius: var(--radius);
+        padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      }
+      h1 { font-size: 28px; margin-bottom: 8px; }
+      .nav { margin-bottom: 24px; font-size: 14px; }
+      .nav a { color: var(--accent); margin-right: 12px; }
+      .message { padding: 12px; background: rgba(34,197,94,0.15); border-radius: 8px; margin-bottom: 16px; color: #86efac; }
+      .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+      .tabs a {
+        padding: 8px 14px; border-radius: 8px; text-decoration: none; color: var(--muted);
+        border: 1px solid var(--border);
+      }
+      .tabs a.active { background: rgba(59,130,246,0.15); color: var(--text); border-color: var(--accent); }
+      .create-form { display: grid; gap: 12px; margin-bottom: 28px; padding: 20px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
+      input, select, textarea {
+        padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+        background: var(--card); color: var(--text); font-size: 14px; width: 100%;
+      }
+      textarea { min-height: 60px; resize: vertical; }
+      button {
+        padding: 10px 16px; border: none; border-radius: 8px; background: var(--accent);
+        color: white; font-weight: 600; cursor: pointer;
+      }
+      .btn-sm { padding: 6px 12px; font-size: 13px; }
+      .btn-danger { background: var(--danger); }
+      .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+      .project-list { list-style: none; }
+      .project-item {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        padding: 14px; border: 1px solid var(--border); border-radius: 8px;
+        margin-bottom: 10px; background: var(--bg); flex-wrap: wrap;
+      }
+      .project-item__info { flex: 1; }
+      .project-item__info strong { display: block; }
+      .project-item__info small { color: var(--muted); }
+      .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+      .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+      form.inline { display: inline; }
+
+  body
+    .container
+      h1= title
+      .nav
+        a(href="/todos") ← Tasks
+        a(href="/dashboard") Dashboard
+        a(href="/users") Users
+
+      if message
+        .message= message
+
+      .tabs
+        a(href="/projects?view=active", class=(view=='active' || !view) ? 'active' : '') Active
+        a(href="/projects?view=archived", class=view=='archived' ? 'active' : '') Archived
+        a(href="/projects?view=all", class=view=='all' ? 'active' : '') All
+
+      if view !== 'archived'
+        h2(style="font-size:18px;margin-bottom:12px;") New project
+        form.create-form(method="post" action="/projects")
+          input(type="text" name="name" placeholder="Project name" required)
+          textarea(name="description" placeholder="Description (optional)" rows="2")
+          input(type="color" name="color" value="#4f46e5")
+          button(type="submit") Create project
+
+      h2(style="font-size:18px;margin:24px 0 12px;") #{view === 'archived' ? 'Archived' : 'Your'} projects
+
+      if projects.length === 0
+        p(style="color:var(--muted);") No projects in this view.
+      else
+        ul.project-list
+          each project in projects
+            li.project-item
+              .project-item__info
+                span.dot(style="background:" + project.color)
+                a(href="/projects/" + project.id)
+                  strong= project.name
+                if project.description
+                  small= project.description
+                small #{project.stats.total} tasks · #{project.stats.active} active · #{project.stats.done} done
+                if project.isInbox
+                  small  (Inbox — cannot delete)
+              .actions
+                a(href="/todos?projectId=" + project.id)
+                  button.btn-sm.btn-ghost(type="button") Tasks
+                if !project.isInbox
+                  if project.status === 'archived'
+                    form.inline(method="post" action="/projects/" + project.id + "/restore")
+                      button.btn-sm(type="submit") Restore
+                  else
+                    form.inline(method="post" action="/projects/" + project.id + "/archive")
+                      button.btn-sm.btn-ghost(type="submit") Archive
+                    form.inline(method="post" action="/projects/delete/" + project.id, onsubmit="return confirm('Delete project? Tasks move to Inbox.')")
+                      button.btn-sm.btn-danger(type="submit") Delete

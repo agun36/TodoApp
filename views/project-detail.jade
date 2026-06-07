@@ -1,0 +1,132 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    title= title
+    style.
+      :root {
+        --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8;
+        --accent: #3b82f6; --danger: #ef4444; --border: #334155; --radius: 12px;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: var(--bg); color: var(--text); min-height: 100vh;
+        display: flex; justify-content: center; padding: 40px 20px;
+      }
+      .container {
+        width: 100%; max-width: 620px; background: var(--card); border-radius: var(--radius);
+        padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      }
+      h1 { font-size: 28px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+      h2 { font-size: 18px; margin: 24px 0 12px; }
+      .dot { width: 14px; height: 14px; border-radius: 50%; }
+      .nav { margin-bottom: 24px; font-size: 14px; }
+      .nav a { color: var(--accent); margin-right: 12px; }
+      .message { padding: 12px; background: rgba(34,197,94,0.15); border-radius: 8px; margin-bottom: 16px; color: #86efac; }
+      .stats { display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
+      .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
+      .stat strong { display: block; font-size: 20px; }
+      .stat span { font-size: 12px; color: var(--muted); }
+      .edit-form, .members-form { display: grid; gap: 12px; margin-top: 12px; padding: 20px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); }
+      input, textarea, select {
+        padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+        background: var(--card); color: var(--text); width: 100%;
+      }
+      textarea { min-height: 80px; }
+      button { padding: 10px 16px; border: none; border-radius: 8px; background: var(--accent); color: white; font-weight: 600; cursor: pointer; }
+      .btn-sm { padding: 6px 12px; font-size: 13px; }
+      .btn-danger { background: #ef4444; }
+      .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+      .actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+      form.inline { display: inline; }
+      .desc { color: var(--muted); margin-bottom: 16px; }
+      .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; background: rgba(148,163,184,0.2); color: var(--muted); }
+      .member-list { list-style: none; }
+      .member-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+      .member-item:last-child { border-bottom: none; }
+      .member-role { color: var(--muted); font-size: 12px; }
+      .member-add { display: flex; gap: 8px; margin-top: 12px; }
+      .member-add input { flex: 1; }
+
+  body
+    .container
+      .nav
+        a(href="/projects") ← Projects
+        a(href="/todos?projectId=" + project.id) View tasks
+
+      if message
+        .message= message
+
+      h1
+        span.dot(style="background:" + project.color)
+        | #{project.name}
+      if project.status === 'archived'
+        span.badge Archived
+      if !isOwner
+        span.badge Shared with you
+
+      if project.description
+        p.desc= project.description
+
+      .stats
+        .stat
+          strong= project.stats.total
+          span Total
+        .stat
+          strong= project.stats.active
+          span Active
+        .stat
+          strong= project.stats.inProgress
+          span In progress
+        .stat
+          strong= project.stats.done
+          span Done
+        .stat
+          strong= project.stats.overdue
+          span Overdue
+
+      h2 Team (#{members.length})
+      ul.member-list
+        each member in members
+          li.member-item
+            span
+              | #{member.email}
+              if member.role === 'owner'
+                span.member-role  (owner)
+            if isOwner && member.role !== 'owner'
+              form.inline(method="post" action="/projects/" + project.id + "/members/remove/" + member.id)
+                button.btn-sm.btn-ghost(type="submit") Remove
+
+      if isOwner && !project.isInbox
+        form.member-add(method="post" action="/projects/" + project.id + "/members")
+          input(type="email" name="email" placeholder="teammate@email.com" required)
+          button.btn-sm(type="submit") Add member
+
+      if isOwner && !project.isInbox
+        h2 Edit project
+        form.edit-form(method="post" action="/projects/edit/" + project.id)
+          label Name
+          input(type="text" name="name" value=project.name required)
+          label Description
+          textarea(name="description")= project.description || ''
+          label Color
+          input(type="color" name="color" value=project.color)
+          button(type="submit") Save changes
+
+        .actions
+          a(href="/todos?projectId=" + project.id)
+            button(type="button") Open tasks
+          if project.status === 'archived'
+            form.inline(method="post" action="/projects/" + project.id + "/restore")
+              button(type="submit") Restore project
+          else
+            form.inline(method="post" action="/projects/" + project.id + "/archive")
+              button(type="submit") Archive
+            form.inline(method="post" action="/projects/delete/" + project.id, onsubmit="return confirm('Delete? Tasks move to Inbox.')")
+              button.btn-danger(type="submit") Delete
+      else if project.isInbox
+        p(style="color:var(--muted);margin-top:20px;") Inbox is personal and cannot have team members.
+      else
+        p(style="color:var(--muted);margin-top:20px;") You are a member of this project. Only the owner can edit settings.

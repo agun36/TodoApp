@@ -3,23 +3,62 @@ var router = express.Router();
 const { prisma } = require('../shared/prisma.service.js');
 const { wantsJson, jsonOk, jsonError } = require('../shared/api-response.js');
 const { createToken } = require('../shared/auth-token.js');
+const {
+    serializeUser,
+    resolveRoleForNewUser,
+    acceptInviteForEmail,
+    isSignupAllowed,
+    normalizeEmail
+} = require('../shared/user.service.js');
+const { findValidInviteByToken } = require('../shared/invite.service.js');
+const {
+    serializeWorkspace,
+    getWorkspaceForUser,
+    ownerNeedsOnboarding,
+    redirectToFrontend
+} = require('../shared/workspace.service.js');
 
 // GET signup page
 router.get('/', function (req, res) {
   if (wantsJson(req)) {
     return jsonOk(res, {
       message: 'POST with email and password to sign up',
-      fields: ['email', 'password'],
+      fields: ['email', 'password', 'name', 'inviteToken'],
       auth: 'JSON response includes a bearer token; use Authorization: Bearer <token>'
     });
   }
-  res.render('login', { message: '', isSignup: true, formAction: '/signup' });
+  return redirectToFrontend(res, '/signup');
 });
 
 // POST signup form
 router.post('/', async function (req, res) {
   try {
-    const { email, password } = req.body;
+    const inviteToken = String(req.body.inviteToken || '').trim();
+    let email = normalizeEmail(req.body.email);
+    const password = req.body.password;
+    const name = String(req.body.name || '').trim() || null;
+    let inviteRecord = null;
+
+    if (inviteToken) {
+      const inviteResult = await findValidInviteByToken(inviteToken);
+      if (!inviteResult || inviteResult.status === 'expired') {
+        const message = 'This invite link has expired. Ask your admin for a new one.';
+        if (wantsJson(req)) return jsonError(res, message, 410);
+        return res.render('login', { message, isSignup: true, formAction: '/signup' });
+      }
+      if (inviteResult.status === 'accepted') {
+        const message = 'This invite was already used. Sign in instead.';
+        if (wantsJson(req)) return jsonError(res, message, 409);
+        return res.render('login', { message, isSignup: true, formAction: '/signup' });
+      }
+      inviteRecord = inviteResult.invite;
+      email = inviteRecord.email;
+      if (!name) {
+        const message = 'Your name is required';
+        if (wantsJson(req)) return jsonError(res, message, 400);
+        return res.render('login', { message, isSignup: true, formAction: '/signup' });
+      }
+    }
 
     if (!email || !password) {
       if (wantsJson(req)) {
@@ -32,31 +71,80 @@ router.post('/', async function (req, res) {
       });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } }
+    });
     if (existingUser) {
       if (wantsJson(req)) {
-        return jsonError(res, 'User already exists', 409);
+        return jsonError(res, 'User already exists. Sign in and accept the invite.', 409);
       }
       return res.render('login', {
-        message: 'User already exists',
+        message: 'User already exists. Sign in and accept the invite.',
         isSignup: true,
         formAction: '/signup'
       });
     }
 
+    const pendingInvite = !inviteRecord
+        ? await prisma.invite.findFirst({
+            where: {
+                email: { equals: email, mode: 'insensitive' },
+                acceptedAt: null,
+                expiresAt: { gt: new Date() }
+            }
+        })
+        : null;
+    const joiningViaInvite = !!(inviteRecord || pendingInvite);
+
+    const allowed = joiningViaInvite ? true : await isSignupAllowed(email);
+    if (!allowed) {
+      const message = 'Sign-up is by invite only. Ask your workspace admin to invite you on the Team page.';
+      if (wantsJson(req)) {
+        return jsonError(res, message, 403);
+      }
+      return res.render('login', {
+        message,
+        isSignup: true,
+        formAction: '/signup'
+      });
+    }
+
+    const role = joiningViaInvite
+        ? 'member'
+        : await resolveRoleForNewUser(email, { joiningViaInvite: false });
     const newUser = await prisma.user.create({
-      data: { email, password }
+      data: { email, password, role, name: joiningViaInvite ? name : null }
     });
+
+    if (inviteRecord) {
+      const { acceptInvite } = require('../shared/invite.service.js');
+      await acceptInvite(inviteRecord, newUser.id);
+    } else if (pendingInvite) {
+      const { acceptInvite } = require('../shared/invite.service.js');
+      await acceptInvite(pendingInvite, newUser.id);
+    } else {
+      await acceptInviteForEmail(email, newUser.id);
+    }
+
     req.session.userId = newUser.id;
     req.session.email = newUser.email;
+    const workspace = await getWorkspaceForUser(newUser.id);
+    const needsOnboarding = await ownerNeedsOnboarding(newUser);
+
     if (wantsJson(req)) {
       return jsonOk(res, {
         message: 'Account created',
-        user: { id: newUser.id, email: newUser.email },
+        user: serializeUser(newUser),
+        workspace: serializeWorkspace(workspace),
+        needsOnboarding,
         token: createToken(newUser.id, newUser.email)
       }, 201);
     }
-    return res.redirect('/todos');
+    const token = createToken(newUser.id, newUser.email);
+    if (needsOnboarding) {
+      return redirectToFrontend(res, '/onboarding#token=' + encodeURIComponent(token));
+    }
+    return redirectToFrontend(res, '/#token=' + encodeURIComponent(token));
   } catch (error) {
     console.error(error);
     if (wantsJson(req)) {

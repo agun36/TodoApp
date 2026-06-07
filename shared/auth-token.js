@@ -3,7 +3,12 @@ const crypto = require('crypto');
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function getSecret() {
-  return process.env.JWT_SECRET || process.env.SESSION_SECRET;
+  const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV !== 'production') {
+    return 'dev-session-secret';
+  }
+  return null;
 }
 
 function sign(payload) {

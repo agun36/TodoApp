@@ -14,155 +14,282 @@ html(lang="en")
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         background: var(--bg); color: var(--text); min-height: 100vh;
-        display: flex; justify-content: center; padding: 40px 20px;
+        display: flex; padding: 24px; gap: 24px;
       }
+      .sidebar {
+        width: 240px; flex-shrink: 0; background: var(--card); border-radius: var(--radius);
+        padding: 20px; box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+      }
+      .sidebar h2 { font-size: 14px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+      .sidebar a, .sidebar button.link {
+        display: block; width: 100%; text-align: left; padding: 10px 12px;
+        border: 1px solid transparent; border-radius: 8px; background: none;
+        color: var(--text); text-decoration: none; cursor: pointer; margin-bottom: 4px;
+      }
+      .sidebar a:hover, .sidebar button.link:hover { background: rgba(255,255,255,0.05); }
+      .sidebar a.active { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.3); }
+      .sidebar .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+      .sidebar small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
       .container {
-        width: 100%; max-width: 650px; background: var(--card); border-radius: var(--radius);
+        flex: 1; max-width: 900px; background: var(--card); border-radius: var(--radius);
         padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
       }
-      h1 { font-size: 28px; margin-bottom: 24px; text-align: center; font-weight: 700; }
-      .add-form { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
-      .add-form input, .add-form select {
-        flex: 1; min-width: 140px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px;
-        background: var(--bg); color: var(--text); font-size: 15px; outline: none;
+      h1 { font-size: 28px; margin-bottom: 8px; font-weight: 700; }
+      .nav-links { margin-bottom: 20px; font-size: 14px; }
+      .nav-links a { color: var(--accent); margin-right: 12px; }
+      .user-info {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 20px; padding: 12px; background: var(--bg);
+        border-radius: 8px; border: 1px solid var(--border); font-size: 14px; color: var(--muted);
       }
-      .add-form input:focus, .add-form select:focus { border-color: var(--accent); }
-      button {
-        padding: 12px 20px; border: none; border-radius: 8px; background: var(--accent);
-        color: white; font-weight: 600; cursor: pointer; transition: 0.2s;
+      .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+      .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; min-width: 80px; }
+      .stat strong { display: block; font-size: 20px; }
+      .stat span { font-size: 12px; color: var(--muted); text-transform: uppercase; }
+      .add-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+      .add-form .full { grid-column: 1 / -1; }
+      .add-form input, .add-form select, .add-form textarea {
+        padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+        background: var(--bg); color: var(--text); font-size: 14px; outline: none; width: 100%;
       }
-      button:hover { opacity: 0.9; }
+      .add-form textarea { min-height: 60px; resize: vertical; }
       .controls { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
       .controls select, .controls input {
-        flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 8px;
+        flex: 1; min-width: 120px; padding: 10px; border: 1px solid var(--border); border-radius: 8px;
         background: var(--bg); color: var(--text);
       }
       .todo-item {
-        display: flex; align-items: center; gap: 12px; padding: 14px;
+        display: flex; align-items: flex-start; gap: 12px; padding: 14px;
         border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px;
-        background: var(--bg);
+        background: var(--bg); flex-wrap: wrap;
       }
       .todo-item.done .task { text-decoration: line-through; color: var(--muted); }
-      .todo-details {
-        flex: 1; display: flex; flex-direction: column; gap: 4px;
-      }
+      .todo-details { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 200px; }
       .task { font-weight: 600; }
       .meta { color: var(--muted); font-size: 13px; }
-      .edit-input {
-        flex: 1; padding: 6px 10px; border: 1px solid var(--accent); border-radius: 6px;
-        background: var(--card); color: var(--text);
+      .badge {
+        display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px;
+        text-transform: uppercase; margin-right: 6px;
       }
+      .badge--high { background: rgba(239,68,68,0.2); color: #fca5a5; }
+      .badge--medium { background: rgba(234,179,8,0.2); color: #fde047; }
+      .badge--low { background: rgba(34,197,94,0.2); color: #86efac; }
+      .badge--todo { background: rgba(148,163,184,0.2); color: #cbd5e1; }
+      .badge--in_progress { background: rgba(59,130,246,0.2); color: #93c5fd; }
+      .badge--done { background: rgba(34,197,94,0.2); color: #86efac; }
+      .project-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+      .project-tag .dot { width: 6px; height: 6px; border-radius: 50%; }
+      button {
+        padding: 10px 16px; border: none; border-radius: 8px; background: var(--accent);
+        color: white; font-weight: 600; cursor: pointer;
+      }
+      button:hover { opacity: 0.9; }
       .btn-sm { padding: 6px 12px; font-size: 13px; }
       .btn-danger { background: var(--danger); }
       .btn-success { background: var(--success); }
-      .btn-ghost { background: transparent; border: 1px solid var(--border); }
+      .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
       .empty { text-align: center; color: var(--muted); padding: 40px 0; }
       .footer-actions {
         display: flex; justify-content: space-between; margin-top: 24px;
         padding-top: 20px; border-top: 1px solid var(--border); align-items: center;
       }
       form.inline { display: inline; }
-      .user-info {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 20px; padding: 12px; background: var(--bg);
-        border-radius: 8px; border: 1px solid var(--border);
-        font-size: 14px; color: var(--muted);
-      }
-      .user-info button { padding: 6px 12px; font-size: 13px; }
-      @media (max-width: 500px) {
-        .add-form, .controls { flex-direction: column; }
-        .todo-item { flex-wrap: wrap; }
+      .edit-form { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .edit-form .full { grid-column: 1 / -1; }
+      @media (max-width: 800px) {
+        body { flex-direction: column; }
+        .sidebar { width: 100%; }
+        .add-form, .edit-form { grid-template-columns: 1fr; }
       }
 
   body
+    aside.sidebar
+      h2 Projects
+      a(href="/todos", class=!projectId ? 'active' : '') All tasks
+      each p in projects
+        a(href="/todos?projectId=" + p.id, class=projectId==p.id ? 'active' : '')
+          span.dot(style="background:" + p.color)
+          | #{p.name}
+          small #{p.stats ? p.stats.active + ' active' : ''}
+      p(style="margin-top:16px;")
+        a(href="/projects") Manage projects →
+
     .container
       h1= title
-      
+      .nav-links
+        a(href="/dashboard") Dashboard
+        a(href="/users") Users
+        a(href="/projects") Projects
+
       .user-info
         span Logged in as: #{email}
         a(href="/login/logout")
-          button(style="margin-left: 10px;") Logout
-      
-      // Add Todo
+          button.btn-sm Logout
+
+      - var totalStats = { total: 0, active: 0, inProgress: 0, done: 0, overdue: 0 }
+      each p in projects
+        if p.stats
+          - totalStats.total += p.stats.total
+          - totalStats.active += p.stats.active
+          - totalStats.inProgress += p.stats.inProgress
+          - totalStats.done += p.stats.done
+          - totalStats.overdue += p.stats.overdue
+      - var displayStats = totalStats
+      each p in projects
+        if projectId && p.id === projectId && p.stats
+          - displayStats = p.stats
+
+      .stats
+        .stat
+          strong= displayStats.total || todos.length
+          span Total
+        .stat
+          strong= displayStats.active || 0
+          span Active
+        .stat
+          strong= displayStats.inProgress || 0
+          span In progress
+        .stat
+          strong= displayStats.done || 0
+          span Done
+        .stat
+          strong= displayStats.overdue || 0
+          span Overdue
+
+      h2(style="margin-bottom:12px;font-size:18px;") Add task
       form.add-form(method="post" action="/todos")
-        input(type="text" name="title" placeholder="What needs to be done?" required)
-        input(type="date" name="dueDate" title="Choose the date you want to do this action")
+        if projectId
+          input(type="hidden" name="projectId" value=projectId)
+        input.full(type="text" name="title" placeholder="What needs to be done?" required)
+        textarea.full(name="description" placeholder="Description (optional)" rows="2")
+        select(name="projectId")
+          each p in projects
+            option(value=p.id, selected=(projectId==p.id || (!projectId && p.isInbox)))= p.name
+        select(name="priority")
+          option(value="low") Low
+          option(value="medium" selected) Medium
+          option(value="high") High
+        select(name="status")
+          option(value="todo" selected) To do
+          option(value="in_progress") In progress
+          option(value="done") Done
+        select(name="assigneeId")
+          option(value="" selected) Unassigned
+          each m in projectMembers
+            if m.id !== currentUserId
+              option(value=m.id)= m.email
+        input(type="date" name="dueDate" title="Due date")
         select(name="repeatType")
           option(value="none" selected) No repeat
           option(value="weekly") Weekly
         select(name="repeatOn")
           option(value="" selected) Repeat day
-          option(value="Sunday") Sunday
-          option(value="Monday") Monday
-          option(value="Tuesday") Tuesday
-          option(value="Wednesday") Wednesday
-          option(value="Thursday") Thursday
-          option(value="Friday") Friday
-          option(value="Saturday") Saturday
-        button(type="submit") Add
-      
-      // Controls
+          each day in ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+            option(value=day)= day
+        button.full(type="submit") Add task
+
       form.controls(method="get" action="/todos")
+        if projectId
+          input(type="hidden" name="projectId" value=projectId)
         input(type="text" name="q" placeholder="Search..." value=query)
         select(name="filter" onchange="this.form.submit()")
-          option(value="all" selected=filter=='all') All
-          option(value="active" selected=filter=='active') Active
-          option(value="completed" selected=filter=='completed') Completed
+          option(value="all" selected=(filter=='all')) All
+          option(value="active" selected=(filter=='active')) Active
+          option(value="completed" selected=(filter=='completed')) Completed
+        select(name="status" onchange="this.form.submit()")
+          option(value="" selected=!statusFilter) Any status
+          option(value="todo" selected=(statusFilter=='todo')) To do
+          option(value="in_progress" selected=(statusFilter=='in_progress')) In progress
+          option(value="done" selected=(statusFilter=='done')) Done
+        select(name="priority" onchange="this.form.submit()")
+          option(value="" selected=!priorityFilter) Any priority
+          option(value="high" selected=(priorityFilter=='high')) High
+          option(value="medium" selected=(priorityFilter=='medium')) Medium
+          option(value="low" selected=(priorityFilter=='low')) Low
+        select(name="scope" onchange="this.form.submit()")
+          option(value="all" selected=(scope=='all' || !scope)) Team
+          option(value="mine" selected=(scope=='mine')) Created by me
+          option(value="assigned" selected=(scope=='assigned')) Assigned to me
+        select(name="assigneeId" onchange="this.form.submit()")
+          option(value="" selected=!assigneeFilter) Any assignee
+          option(value="me" selected=(assigneeFilter=='me')) Assigned to me
+          option(value="unassigned" selected=(assigneeFilter=='unassigned')) Unassigned
+          each m in projectMembers
+            option(value=m.id, selected=(assigneeFilter==m.id))= m.email
         select(name="sort" onchange="this.form.submit()")
-          option(value="newest" selected=sort=='newest') Newest
-          option(value="oldest" selected=sort=='oldest') Oldest
-          option(value="az" selected=sort=='az') A-Z
-      
-      // Todo List
+          option(value="newest" selected=(sort=='newest')) Newest
+          option(value="oldest" selected=(sort=='oldest')) Oldest
+          option(value="priority" selected=(sort=='priority')) Priority
+          option(value="az" selected=(sort=='az')) A-Z
+
       .todo-list
         if todos.length === 0
-          .empty No todos yet. Add one above! 👆
+          .empty No tasks yet. Add one above!
         else
           each todo in todos
-            .todo-item(class=todo.done ? 'done' : '')
-              form.inline(method="post" action="/todos/toggle")
-                input(type="hidden" name="id" value=todo.id)
-                button.btn-sm.btn-success(type="submit") #{todo.done ? '✓' : '○'}
-              
+            .todo-item(class=(todo.status=='done' || todo.done) ? 'done' : '')
               if editing == todo.id
-                form.inline(method="post" action="/todos/edit" style="flex:1; display:flex; gap:8px")
+                form.edit-form(method="post" action="/todos/edit")
                   input(type="hidden" name="id" value=todo.id)
-                  input.edit-input(type="text" name="title" value=todo.title autofocus)
+                  input.full(type="text" name="title" value=todo.title required)
+                  textarea.full(name="description" placeholder="Description")= todo.description || ''
+                  select(name="projectId")
+                    each p in projects
+                      option(value=p.id, selected=(todo.projectId==p.id))= p.name
+                  select(name="priority")
+                    option(value="low" selected=(todo.priority=='low')) Low
+                    option(value="medium" selected=(todo.priority=='medium')) Medium
+                    option(value="high" selected=(todo.priority=='high')) High
+                  select(name="status")
+                    option(value="todo" selected=(todo.status=='todo')) To do
+                    option(value="in_progress" selected=(todo.status=='in_progress')) In progress
+                    option(value="done" selected=(todo.status=='done')) Done
+                  select(name="assigneeId")
+                    option(value="" selected=!todo.assigneeId) Unassigned
+                    each m in projectMembers
+                      if m.id !== currentUserId
+                        option(value=m.id, selected=(todo.assigneeId==m.id))= m.email
                   input(type="date" name="dueDate" value=(todo.dueDate ? new Date(todo.dueDate).toISOString().slice(0,10) : ''))
                   select(name="repeatType")
-                    option(value="none" selected=todo.repeatType!='weekly') No repeat
-                    option(value="weekly" selected=todo.repeatType=='weekly') Weekly
+                    option(value="none" selected=(todo.repeatType!='weekly')) No repeat
+                    option(value="weekly" selected=(todo.repeatType=='weekly')) Weekly
                   select(name="repeatOn")
-                    option(value="" selected=!todo.repeatOn) Repeat day
-                    option(value="Sunday" selected=todo.repeatOn=='Sunday') Sunday
-                    option(value="Monday" selected=todo.repeatOn=='Monday') Monday
-                    option(value="Tuesday" selected=todo.repeatOn=='Tuesday') Tuesday
-                    option(value="Wednesday" selected=todo.repeatOn=='Wednesday') Wednesday
-                    option(value="Thursday" selected=todo.repeatOn=='Thursday') Thursday
-                    option(value="Friday" selected=todo.repeatOn=='Friday') Friday
-                    option(value="Saturday" selected=todo.repeatOn=='Saturday') Saturday
+                    each day in ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+                      option(value=day, selected=(todo.repeatOn==day))= day
                   button.btn-sm(type="submit") Save
-                  a(href="/todos")
+                  a(href="/todos" + (projectId ? '?projectId=' + projectId : ''))
                     button.btn-sm.btn-ghost(type="button") Cancel
               else
                 .todo-details
                   span.task= todo.title
+                  if todo.description
+                    span.meta= todo.description
+                  div
+                    span(class='badge badge--' + (todo.priority || 'medium'))= todo.priority || 'medium'
+                    span(class='badge badge--' + (todo.status || 'todo'))= todo.status || 'todo'
+                    if todo.project && !projectId
+                      span.project-tag
+                        span.dot(style="background:" + todo.project.color)
+                        | #{todo.project.name}
+                    if todo.assignee
+                      span.meta → #{todo.assignee.email}
+                    else if todo.assigneeId
+                      span.meta Assigned
                   if todo.dueLabel
-                    span.meta When: #{todo.dueLabel}
-                  else
-                    span.meta No date selected
+                    span.meta Due: #{todo.dueLabel}
                   if todo.repeatLabel
                     span.meta= todo.repeatLabel
-                  if todo.upcomingLabels && todo.upcomingLabels.length
-                    span.meta Next: #{todo.upcomingLabels.join(', ')}
-                a(href="/todos?edit=" + todo.id)
-                  button.btn-sm.btn-ghost(type="button") Edit
-                form.inline(method="post" action="/todos/delete")
+                form.inline(method="post" action="/todos/toggle")
                   input(type="hidden" name="id" value=todo.id)
-                  button.btn-sm.btn-danger(type="submit") Delete
-      
-      // Footer
+                  button.btn-sm.btn-success(type="submit") #{todo.status=='done' ? '✓' : '○'}
+                if todo.userId == currentUserId
+                  a(href="/todos?edit=" + todo.id + (projectId ? '&projectId=' + projectId : ''))
+                    button.btn-sm.btn-ghost(type="button") Edit
+                  form.inline(method="post" action="/todos/delete")
+                    input(type="hidden" name="id" value=todo.id)
+                    button.btn-sm.btn-danger(type="submit") Delete
+
       .footer-actions
         form(method="post" action="/todos/clear")
-          button.btn-danger(type="submit") Clear Completed
-        p(style="color: var(--muted); font-size: 14px;") #{todos.length} item#{todos.length !== 1 ? 's' : ''}
+          button.btn-danger(type="submit") Clear completed
+        p(style="color: var(--muted); font-size: 14px;") #{todos.length} task#{todos.length !== 1 ? 's' : ''}

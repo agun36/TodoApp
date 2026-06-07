@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "dev": "nodemon ./app.js",
+    "dev": "node scripts/migrate-deploy.js && nodemon ./app.js",
     "start": "node scripts/start-production.js",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "build": "prisma generate && node scripts/ensure-node-deps.js",
     "postinstall": "prisma generate",
-    "render-build": "bash render-build.sh"
+    "render-build": "bash render-build.sh",
+    "test": "node --test tests/**/*.test.js",
+    "promote-admin": "node scripts/promote-admin.js"
   },
   "engines": {
     "node": "22.x"
@@ -33,7 +35,8 @@
     "prisma": "^7.8.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
   },
   "overrides": {
     "debug": "4.3.7"

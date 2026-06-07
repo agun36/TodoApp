@@ -11,10 +11,14 @@ function wantsJson(req) {
 }
 
 function jsonOk(res, data, status) {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.set('Pragma', 'no-cache');
   return res.status(status || 200).json({ success: true, ...data });
 }
 
 function jsonError(res, message, status) {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.set('Pragma', 'no-cache');
   return res.status(status || 400).json({ success: false, message });
 }
 

@@ -1,8 +1,42 @@
 include head.jade
 
-h1 Welcome to Dashboard
-p You’re logged in.
+    h1 Dashboard
+    p Logged in as #{email}
 
-a(href="/logout") Logout
+    h2 Overview
+    ul
+      li Total projects: #{stats.totalProjects}
+      li Total tasks: #{stats.totalTasks}
+      li Active: #{stats.active}
+      li In progress: #{stats.inProgress}
+      li Done: #{stats.done}
+      li Overdue: #{stats.overdue}
+
+    h2 Projects
+    if projects.length === 0
+      p No projects yet.
+    else
+      ul
+        each project in projects
+          li
+            strong= project.name
+            |  — #{project.stats.active} active, #{project.stats.done} done
+
+    h2 Recent activity
+    if !recentActivity || !recentActivity.items || recentActivity.items.length === 0
+      p No activity yet.
+    else
+      ul
+        each item in recentActivity.items
+          li= item.message
+      if recentActivity.totalPages > 1
+        p Page #{recentActivity.page} of #{recentActivity.totalPages}
+
+    p
+      a(href="/todos") Tasks
+      |  · 
+      a(href="/users") Users
+      |  · 
+      a(href="/login/logout") Log out
 
 include foot.jade
