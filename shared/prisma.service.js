@@ -14,18 +14,33 @@ const isLocalPrismaDev = (() => {
   }
 })();
 
-// Prisma dev Postgres allows ~10 connections total — keep the app pool small locally.
+// Cursor/Prisma local Postgres allows ~10 connections total — keep the app pool small.
 const pool = new Pool({
   connectionString: databaseUrl,
-  max: isLocalPrismaDev ? 3 : 10,
-  idleTimeoutMillis: 5_000,
-  connectionTimeoutMillis: isLocalPrismaDev ? 15_000 : 5_000,
+  max: isLocalPrismaDev ? 2 : 10,
+  idleTimeoutMillis: 3_000,
+  connectionTimeoutMillis: isLocalPrismaDev ? 25_000 : 5_000,
+  keepAlive: true,
 });
 pool.on('error', (error) => {
   console.error('[prisma pool]', error.message);
 });
 
+let poolClosed = false;
+async function closePool() {
+  if (poolClosed) return;
+  poolClosed = true;
+  try {
+    await pool.end();
+  } catch (error) {
+    console.error('[prisma pool] close failed:', error.message);
+  }
+}
+
+process.once('SIGINT', closePool);
+process.once('SIGTERM', closePool);
+
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-module.exports = { prisma, pool };
+module.exports = { prisma, pool, closePool };

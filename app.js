@@ -21,6 +21,8 @@ var onboardingRouter = require('./routes/onboarding.js');
 var groupsRouter = require('./routes/groups.js');
 var messagesRouter = require('./routes/messages.js');
 var meetingsRouter = require('./routes/meetings.js');
+var billingRouter = require('./routes/billing.js');
+var stripeWebhook = billingRouter.stripeWebhook;
 var { startScheduler } = require('./shared/cron.service.js');
 var { wantsJson, jsonError } = require('./shared/api-response.js');
 
@@ -48,6 +50,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(logger('dev'));
+app.post('/billing/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -70,6 +73,7 @@ app.use('/onboarding', onboardingRouter);
 app.use('/groups', groupsRouter);
 app.use('/messages', messagesRouter);
 app.use('/meetings', meetingsRouter);
+app.use('/billing', billingRouter);
 
 if (process.env.NODE_ENV !== 'test') {
   startScheduler();

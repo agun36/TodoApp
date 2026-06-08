@@ -93,6 +93,17 @@ async function addWorkspaceMember(workspaceId, userId, role) {
     });
 }
 
+async function updateWorkspacePlan(ownerId, plan) {
+    const workspace = await getWorkspaceForOwner(ownerId);
+    if (!workspace) return null;
+
+    const normalized = plan === 'paid' ? 'paid' : 'free';
+    return prisma.workspace.update({
+        where: { id: workspace.id },
+        data: { plan: normalized }
+    });
+}
+
 async function ownerNeedsOnboarding(user) {
     if (!user) return false;
     const { isInvitedWorkspaceMember } = require('./user.service.js');
@@ -120,6 +131,7 @@ module.exports = {
     canAddWorkspaceMember,
     addWorkspaceMember,
     ownerNeedsOnboarding,
+    updateWorkspacePlan,
     getAppBaseUrl,
     redirectToFrontend
 };

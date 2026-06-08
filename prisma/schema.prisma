@@ -48,8 +48,10 @@ model Workspace {
   teamType   String?
   teamSize   String?
   primaryUse String?
-  plan       String            @default("free")
-  ownerId    String            @unique
+  plan                 String            @default("free")
+  stripeCustomerId     String?           @unique
+  stripeSubscriptionId String?           @unique
+  ownerId              String            @unique
   owner      User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members    WorkspaceMember[]
   invites    Invite[]
