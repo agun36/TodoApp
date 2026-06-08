@@ -324,14 +324,29 @@ test('workspace admin can invite and add member to project', async () => {
     assert.ok(members.body.members.some((member) => member.id === memberId));
 });
 
-test('signup without invite is rejected once workspace has an admin', async () => {
+test('signup without invite creates a new workspace owner', async () => {
+    const email = `owner-${runId}@example.com`;
     const res = await request(app)
         .post('/signup')
         .set(jsonHeaders)
-        .send({ email: `uninvited-${runId}@example.com`, password: 'test-password-123' });
+        .send({ email, password: 'test-password-123' });
 
-    assert.equal(res.status, 403);
-    assert.match(res.body.message, /invite only/i);
+    assert.equal(res.status, 201);
+    assert.equal(res.body.user.role, 'admin');
+    assert.equal(res.body.needsOnboarding, true);
+
+    const onboarding = await request(app)
+        .post('/onboarding')
+        .set(authHeader(res.body.token))
+        .send({
+            workspaceName: `Second workspace ${runId}`,
+            teamType: 'startup',
+            teamSize: '2-5',
+            primaryUse: 'both'
+        });
+
+    assert.equal(onboarding.status, 201);
+    assert.equal(onboarding.body.workspace.name, `Second workspace ${runId}`);
 });
 
 test('workspace owner can create groups and add invitees before they join', async () => {

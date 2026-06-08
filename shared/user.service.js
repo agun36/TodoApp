@@ -199,27 +199,12 @@ function normalizeEmail(value) {
 
 async function isSignupAllowed(email) {
     const normalized = normalizeEmail(email);
-    if (!normalized || !normalized.includes('@')) return false;
-    if (shouldBootstrapAdmin(normalized)) return true;
-
-    const admins = await adminCount();
-    if (admins === 0) return true;
-
-    const invite = await prisma.invite.findFirst({
-        where: {
-            email: { equals: normalized, mode: 'insensitive' },
-            acceptedAt: null
-        }
-    });
-    return !!invite;
+    return !!(normalized && normalized.includes('@'));
 }
 
 async function resolveRoleForNewUser(email, options) {
     if (options && options.joiningViaInvite) return 'member';
-    if (shouldBootstrapAdmin(email)) return 'admin';
-    const admins = await adminCount();
-    if (admins === 0) return 'admin';
-    return 'member';
+    return 'admin';
 }
 
 async function normalizeInvitedMemberRole(userId) {

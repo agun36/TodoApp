@@ -96,11 +96,10 @@ router.post('/', async function (req, res) {
         : null;
     const joiningViaInvite = !!(inviteRecord || pendingInvite);
 
-    const allowed = joiningViaInvite ? true : await isSignupAllowed(email);
-    if (!allowed) {
-      const message = 'Sign-up is by invite only. Ask your workspace admin to invite you on the Team page.';
+    if (!joiningViaInvite && !(await isSignupAllowed(email))) {
+      const message = 'A valid email address is required';
       if (wantsJson(req)) {
-        return jsonError(res, message, 403);
+        return jsonError(res, message, 400);
       }
       return res.render('login', {
         message,
