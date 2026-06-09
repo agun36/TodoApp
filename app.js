@@ -22,6 +22,7 @@ var groupsRouter = require('./routes/groups.js');
 var messagesRouter = require('./routes/messages.js');
 var meetingsRouter = require('./routes/meetings.js');
 var billingRouter = require('./routes/billing.js');
+var workspacesRouter = require('./routes/workspaces.js');
 var stripeWebhook = billingRouter.stripeWebhook;
 var { startScheduler } = require('./shared/cron.service.js');
 var { wantsJson, jsonError } = require('./shared/api-response.js');
@@ -47,7 +48,8 @@ app.set('etag', false);
 
 app.use(cors({
   origin: corsOrigins,
-  credentials: true
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Workspace-Id']
 }));
 app.use(logger('dev'));
 app.post('/billing/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
@@ -73,6 +75,7 @@ app.use('/onboarding', onboardingRouter);
 app.use('/groups', groupsRouter);
 app.use('/messages', messagesRouter);
 app.use('/meetings', meetingsRouter);
+app.use('/workspaces', workspacesRouter);
 app.use('/billing', billingRouter);
 
 if (process.env.NODE_ENV !== 'test') {

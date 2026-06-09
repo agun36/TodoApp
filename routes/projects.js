@@ -16,7 +16,7 @@ const {
     getProjectMembers
 } = require('../shared/project.service.js');
 const { logActivity } = require('../shared/activity.service.js');
-const { getWorkspaceForUser, canCreateProject } = require('../shared/workspace.service.js');
+const { getWorkspaceForRequest, canCreateProject } = require('../shared/workspace.service.js');
 
 function parseProjectId(value) {
     if (value === undefined || value === null) return null;
@@ -87,7 +87,7 @@ router.post('/', requireAuth, async function (req, res) {
         return res.redirect('/projects?message=Project+already+exists');
     }
 
-    const workspace = await getWorkspaceForUser(req.auth.userId);
+    const workspace = await getWorkspaceForRequest(req);
     const projectCapacity = await canCreateProject(workspace);
     if (!projectCapacity.allowed) {
         if (wantsJson(req)) return jsonError(res, projectCapacity.reason, 402);

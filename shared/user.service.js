@@ -121,8 +121,8 @@ async function getWorkspaceRole(userId, workspace) {
     return membership.role || 'member';
 }
 
-async function isWorkspaceManager(userId) {
-    const workspace = await getWorkspaceForUser(userId);
+async function isWorkspaceManager(userId, requestedWorkspaceId) {
+    const workspace = await getWorkspaceForUser(userId, requestedWorkspaceId);
     if (!workspace) return false;
     const role = await getWorkspaceRole(userId, workspace);
     return role === 'owner' || role === 'admin';
@@ -255,7 +255,7 @@ async function assertTeamEmailAvailable(workspaceId, teamEmail, excludeUserId) {
     }
 }
 
-async function updateOwnProfile(userId, payload) {
+async function updateOwnProfile(userId, payload, requestedWorkspaceId) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
         const err = new Error('User not found');
@@ -315,7 +315,7 @@ async function updateOwnProfile(userId, payload) {
         });
     }
 
-    const workspace = await getWorkspaceForUser(userId);
+    const workspace = await getWorkspaceForUser(userId, requestedWorkspaceId);
     if (workspace && payload && payload.teamEmail !== undefined) {
         const teamEmailRaw = String(payload.teamEmail).trim();
         const teamEmail = teamEmailRaw ? normalizeEmail(teamEmailRaw) : null;

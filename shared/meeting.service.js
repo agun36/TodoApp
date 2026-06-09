@@ -86,8 +86,8 @@ async function canManageProjectMeetings(userId, projectId) {
     return isProjectOwner(projectId, userId);
 }
 
-async function listMeetingsForUser(userId) {
-    const workspace = await getWorkspaceForUser(userId);
+async function listMeetingsForUser(userId, workspaceId) {
+    const workspace = await getWorkspaceForUser(userId, workspaceId);
     if (!workspace) return { meetings: [], canManage: false };
 
     const projectIds = await getAccessibleProjectIds(userId, 'active');
@@ -149,6 +149,7 @@ async function notifyMeetingTeam(meeting, actorEmail, options) {
 
 async function createMeeting({
     userId,
+    workspaceId,
     actorEmail,
     projectId,
     title,
@@ -157,7 +158,7 @@ async function createMeeting({
     meetingDay,
     meetingTime
 }) {
-    const workspace = await getWorkspaceForUser(userId);
+    const workspace = await getWorkspaceForUser(userId, workspaceId);
     if (!workspace) {
         const err = new Error('Workspace not found');
         err.status = 404;
@@ -215,7 +216,7 @@ async function createMeeting({
     };
 }
 
-async function deleteMeeting(meetingId, userId) {
+async function deleteMeeting(meetingId, userId, workspaceId) {
     const meeting = await prisma.teamMeeting.findUnique({
         where: { id: meetingId },
         include: {
@@ -225,7 +226,7 @@ async function deleteMeeting(meetingId, userId) {
     });
     if (!meeting || !meeting.active) return null;
 
-    const workspace = await getWorkspaceForUser(userId);
+    const workspace = await getWorkspaceForUser(userId, workspaceId);
     if (!workspace || meeting.workspaceId !== workspace.id) return null;
 
     if (
@@ -245,7 +246,7 @@ async function deleteMeeting(meetingId, userId) {
     return serializeMeeting(meeting);
 }
 
-async function resendMeetingNotification(meetingId, userId, actorEmail) {
+async function resendMeetingNotification(meetingId, userId, actorEmail, workspaceId) {
     const meeting = await prisma.teamMeeting.findUnique({
         where: { id: meetingId },
         include: {
@@ -255,7 +256,7 @@ async function resendMeetingNotification(meetingId, userId, actorEmail) {
     });
     if (!meeting || !meeting.active) return null;
 
-    const workspace = await getWorkspaceForUser(userId);
+    const workspace = await getWorkspaceForUser(userId, workspaceId);
     if (!workspace || meeting.workspaceId !== workspace.id) return null;
 
     if (!(await canManageProjectMeetings(userId, meeting.projectId))) {

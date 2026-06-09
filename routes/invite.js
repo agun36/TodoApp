@@ -9,7 +9,10 @@ const {
     serializeInvitePublic,
     acceptInvite
 } = require('../shared/invite.service.js');
-const { serializeWorkspace } = require('../shared/workspace.service.js');
+const {
+    serializeWorkspace,
+    listWorkspacesForUser
+} = require('../shared/workspace.service.js');
 
 router.get('/:token', async function (req, res) {
     try {
@@ -65,9 +68,12 @@ router.post('/:token/join', requireAuth, async function (req, res) {
         await acceptInvite(result.invite, user.id);
 
         const workspace = result.invite.workspace;
+        const workspaces = await listWorkspacesForUser(user.id);
         return jsonOk(res, {
             message: 'You joined ' + workspace.name,
             workspace: serializeWorkspace(workspace),
+            workspaces,
+            activeWorkspaceId: workspace.id,
             user: serializeUser(user)
         });
     } catch (error) {

@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 const { jsonOk, jsonError } = require('../shared/api-response.js');
-const { requireAuth } = require('../shared/require-auth.js');
+const { requireAuth, getWorkspaceIdFromRequest } = require('../shared/require-auth.js');
 const {
     listConversationsForUser,
     findOrCreateConversation,
@@ -11,7 +11,10 @@ const {
 
 router.get('/', requireAuth, async function (req, res) {
     try {
-        const conversations = await listConversationsForUser(req.auth.userId);
+        const conversations = await listConversationsForUser(
+            req.auth.userId,
+            getWorkspaceIdFromRequest(req)
+        );
         return jsonOk(res, { conversations });
     } catch (error) {
         console.error(error);
@@ -26,7 +29,11 @@ router.post('/', requireAuth, async function (req, res) {
             return jsonError(res, 'recipientId is required', 400);
         }
 
-        const conversation = await findOrCreateConversation(req.auth.userId, recipientId);
+        const conversation = await findOrCreateConversation(
+            req.auth.userId,
+            recipientId,
+            getWorkspaceIdFromRequest(req)
+        );
         return jsonOk(res, { message: 'Conversation ready', conversation }, 201);
     } catch (error) {
         if (error && error.status) {

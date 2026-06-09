@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 const { jsonOk, jsonError } = require('../shared/api-response.js');
-const { requireAuth } = require('../shared/require-auth.js');
+const { requireAuth, getWorkspaceIdFromRequest } = require('../shared/require-auth.js');
 const { findUserById } = require('../shared/user.service.js');
 const {
     listMeetingsForUser,
@@ -17,7 +17,7 @@ router.get('/', requireAuth, async function (req, res) {
             return jsonError(res, 'Your session is no longer valid. Please sign in again.', 401);
         }
 
-        const payload = await listMeetingsForUser(user.id);
+        const payload = await listMeetingsForUser(user.id, getWorkspaceIdFromRequest(req));
         return jsonOk(res, { success: true, ...payload });
     } catch (error) {
         console.error('[meetings GET]', error);
@@ -34,6 +34,7 @@ router.post('/', requireAuth, async function (req, res) {
 
         const result = await createMeeting({
             userId: user.id,
+            workspaceId: getWorkspaceIdFromRequest(req),
             actorEmail: req.auth.email,
             projectId: req.body.projectId,
             title: req.body.title,
@@ -68,7 +69,12 @@ router.post('/:id/notify', requireAuth, async function (req, res) {
             return jsonError(res, 'Your session is no longer valid. Please sign in again.', 401);
         }
 
-        const result = await resendMeetingNotification(req.params.id, user.id, req.auth.email);
+        const result = await resendMeetingNotification(
+            req.params.id,
+            user.id,
+            req.auth.email,
+            getWorkspaceIdFromRequest(req)
+        );
         if (!result) return jsonError(res, 'Meeting not found', 404);
 
         const sentCount = result.notifyResult.results.filter(function (row) { return row.sent; }).length;
@@ -96,7 +102,11 @@ router.delete('/:id', requireAuth, async function (req, res) {
             return jsonError(res, 'Your session is no longer valid. Please sign in again.', 401);
         }
 
-        const meeting = await deleteMeeting(req.params.id, user.id);
+        const meeting = await deleteMeeting(
+            req.params.id,
+            user.id,
+            getWorkspaceIdFromRequest(req)
+        );
         if (!meeting) return jsonError(res, 'Meeting not found', 404);
 
         return jsonOk(res, { success: true, message: 'Meeting removed', meeting });

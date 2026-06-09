@@ -149,6 +149,11 @@ async function acceptInvite(invite, userId) {
     const { promoteInviteGroupAssignments } = require('./group.service.js');
     await promoteInviteGroupAssignments(invite.id, userId);
 
+    await prisma.user.update({
+        where: { id: userId },
+        data: { activeWorkspaceId: invite.workspaceId }
+    });
+
     const workspace = await prisma.workspace.findUnique({
         where: { id: invite.workspaceId },
         select: { ownerId: true }

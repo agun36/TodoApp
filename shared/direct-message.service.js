@@ -132,8 +132,8 @@ async function serializeConversation(conversation, currentUserId) {
     };
 }
 
-async function listConversationsForUser(userId) {
-    const workspace = await getWorkspaceForUser(userId);
+async function listConversationsForUser(userId, workspaceId) {
+    const workspace = await getWorkspaceForUser(userId, workspaceId);
     if (!workspace) return [];
 
     const conversations = await prisma.directConversation.findMany({
@@ -153,8 +153,8 @@ async function listConversationsForUser(userId) {
     }));
 }
 
-async function findOrCreateConversation(userId, recipientId) {
-    const workspace = await getWorkspaceForUser(userId);
+async function findOrCreateConversation(userId, recipientId, workspaceId) {
+    const workspace = await getWorkspaceForUser(userId, workspaceId);
     if (!workspace) {
         const error = new Error('Workspace not found');
         error.status = 404;

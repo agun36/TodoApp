@@ -743,3 +743,83 @@ test('workspace owner can update own profile', async () => {
     assert.equal(ownerInList.displayEmail, teamEmail);
     assert.equal(ownerInList.avatarUrl, avatarUrl);
 });
+
+test('user can switch between owned and invited workspaces', async () => {
+    const ownerEmail = `switch-owner-${runId}@example.com`;
+    const ownerSignup = await request(app)
+        .post('/signup')
+        .set(jsonHeaders)
+        .send({ email: ownerEmail, password: 'test-password-123' });
+
+    assert.equal(ownerSignup.status, 201);
+
+    const ownerOnboarding = await request(app)
+        .post('/onboarding')
+        .set(authHeader(ownerSignup.body.token))
+        .send({
+            workspaceName: `Switch owner workspace ${runId}`,
+            teamType: 'startup',
+            teamSize: '2-5',
+            primaryUse: 'both'
+        });
+
+    assert.equal(ownerOnboarding.status, 201);
+    const ownerWorkspaceId = ownerOnboarding.body.workspace.id;
+    const ownerToken = ownerSignup.body.token;
+
+    const invite = await request(app)
+        .post('/users/invite')
+        .set(authHeader(ownerToken))
+        .send({ email: adminEmail });
+
+    assert.equal(invite.status, 201);
+
+    const join = await request(app)
+        .post(`/invite/${invite.body.invite.token}/join`)
+        .set(authHeader(token));
+
+    assert.equal(join.status, 200);
+    assert.equal(join.body.activeWorkspaceId, ownerWorkspaceId);
+
+    const list = await request(app)
+        .get('/workspaces')
+        .set(authHeader(token));
+
+    assert.equal(list.status, 200);
+    assert.ok(list.body.workspaces.length >= 2);
+    assert.equal(list.body.activeWorkspaceId, ownerWorkspaceId);
+
+    const invitedView = await request(app)
+        .get('/users')
+        .set({
+            ...authHeader(token),
+            'X-Workspace-Id': ownerWorkspaceId
+        });
+
+    assert.equal(invitedView.status, 200);
+    assert.equal(invitedView.body.workspace.id, ownerWorkspaceId);
+    assert.equal(invitedView.body.currentUser.isOwner, false);
+
+    const ownedWorkspaceId = invitedView.body.workspaces.find(function (entry) {
+        return entry.isOwned;
+    }).id;
+
+    const switchRes = await request(app)
+        .post('/workspaces/active')
+        .set(authHeader(token))
+        .send({ workspaceId: ownedWorkspaceId });
+
+    assert.equal(switchRes.status, 200);
+    assert.equal(switchRes.body.activeWorkspaceId, ownedWorkspaceId);
+
+    const ownedView = await request(app)
+        .get('/users')
+        .set({
+            ...authHeader(token),
+            'X-Workspace-Id': ownedWorkspaceId
+        });
+
+    assert.equal(ownedView.status, 200);
+    assert.equal(ownedView.body.workspace.id, ownedWorkspaceId);
+    assert.equal(ownedView.body.currentUser.isOwner, true);
+});

@@ -2,8 +2,8 @@ var express = require('express');
 var router = express.Router();
 const { jsonOk, jsonError } = require('../shared/api-response.js');
 const { requireAuth } = require('../shared/require-auth.js');
-const { findUserById, isWorkspaceOwner, isWorkspaceManager } = require('../shared/user.service.js');
-const { getWorkspaceForUser, canCreateGroup } = require('../shared/workspace.service.js');
+const { findUserById, getWorkspaceRole } = require('../shared/user.service.js');
+const { getWorkspaceForRequest, canCreateGroup } = require('../shared/workspace.service.js');
 const {
     listGroupsForWorkspace,
     createGroup,
@@ -20,13 +20,14 @@ async function requireWorkspaceContext(req, res) {
         jsonError(res, 'User not found', 404);
         return null;
     }
-    const workspace = await getWorkspaceForUser(user.id);
+    const workspace = await getWorkspaceForRequest(req);
     if (!workspace) {
         jsonError(res, 'Workspace not found', 404);
         return null;
     }
-    const isOwner = await isWorkspaceOwner(user.id);
-    const canManage = await isWorkspaceManager(user.id);
+    const isOwner = workspace.ownerId === user.id;
+    const role = await getWorkspaceRole(user.id, workspace);
+    const canManage = role === 'owner' || role === 'admin';
     return { user, workspace, isOwner, canManage };
 }
 

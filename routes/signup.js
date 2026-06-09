@@ -14,6 +14,7 @@ const { findValidInviteByToken } = require('../shared/invite.service.js');
 const {
     serializeWorkspace,
     getWorkspaceForUser,
+    listWorkspacesForUser,
     ownerNeedsOnboarding,
     redirectToFrontend
 } = require('../shared/workspace.service.js');
@@ -128,6 +129,7 @@ router.post('/', async function (req, res) {
     req.session.userId = newUser.id;
     req.session.email = newUser.email;
     const workspace = await getWorkspaceForUser(newUser.id);
+    const workspaces = await listWorkspacesForUser(newUser.id);
     const needsOnboarding = await ownerNeedsOnboarding(newUser);
 
     if (wantsJson(req)) {
@@ -135,6 +137,8 @@ router.post('/', async function (req, res) {
         message: 'Account created',
         user: serializeUser(newUser),
         workspace: serializeWorkspace(workspace),
+        workspaces,
+        activeWorkspaceId: workspace?.id ?? null,
         needsOnboarding,
         token: createToken(newUser.id, newUser.email)
       }, 201);

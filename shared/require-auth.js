@@ -32,4 +32,13 @@ function requireAuth(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, resolveAuth };
+function getWorkspaceIdFromRequest(req) {
+    if (!req) return null;
+    const header = req.headers && (req.headers['x-workspace-id'] || req.headers['X-Workspace-Id']);
+    const fromHeader = String(header || '').trim();
+    if (fromHeader) return fromHeader;
+    const fromQuery = String(req.query?.workspaceId || '').trim();
+    return fromQuery || null;
+}
+
+module.exports = { requireAuth, resolveAuth, getWorkspaceIdFromRequest };

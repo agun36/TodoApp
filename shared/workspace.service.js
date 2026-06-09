@@ -25,15 +25,107 @@ async function getWorkspaceForOwner(ownerId) {
     return prisma.workspace.findUnique({ where: { ownerId } });
 }
 
-async function getWorkspaceForUser(userId) {
+async function userHasWorkspaceAccess(userId, workspaceId) {
+    if (!userId || !workspaceId) return false;
+    const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+    if (!workspace) return false;
+    if (workspace.ownerId === userId) return true;
+    const membership = await prisma.workspaceMember.findUnique({
+        where: { workspaceId_userId: { workspaceId, userId } }
+    });
+    return !!membership;
+}
+
+async function listWorkspacesForUser(userId) {
+    if (!userId) return [];
+
+    const [owned, memberships] = await Promise.all([
+        prisma.workspace.findUnique({ where: { ownerId: userId } }),
+        prisma.workspaceMember.findMany({
+            where: { userId },
+            include: { workspace: true },
+            orderBy: { joinedAt: 'asc' }
+        })
+    ]);
+
+    const seen = new Set();
+    const entries = [];
+
+    function pushEntry(workspace, role) {
+        if (!workspace || seen.has(workspace.id)) return;
+        seen.add(workspace.id);
+        entries.push({
+            ...serializeWorkspace(workspace),
+            role,
+            isOwned: workspace.ownerId === userId
+        });
+    }
+
+    if (owned) pushEntry(owned, 'owner');
+    for (const row of memberships) {
+        const role = row.workspace.ownerId === userId
+            ? 'owner'
+            : (row.role || 'member');
+        pushEntry(row.workspace, role);
+    }
+
+    return entries;
+}
+
+async function setActiveWorkspace(userId, workspaceId) {
+    const allowed = await userHasWorkspaceAccess(userId, workspaceId);
+    if (!allowed) {
+        const err = new Error('You do not have access to that workspace');
+        err.status = 403;
+        throw err;
+    }
+
+    await prisma.user.update({
+        where: { id: userId },
+        data: { activeWorkspaceId: workspaceId }
+    });
+
+    return prisma.workspace.findUnique({ where: { id: workspaceId } });
+}
+
+async function resolveWorkspaceForUser(userId, requestedWorkspaceId) {
+    if (!userId) return null;
+
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { activeWorkspaceId: true }
+    });
+    if (!user) return null;
+
+    const candidates = [
+        requestedWorkspaceId,
+        user.activeWorkspaceId
+    ].filter(Boolean);
+
+    for (const workspaceId of candidates) {
+        if (await userHasWorkspaceAccess(userId, workspaceId)) {
+            return prisma.workspace.findUnique({ where: { id: workspaceId } });
+        }
+    }
+
     const owned = await prisma.workspace.findUnique({ where: { ownerId: userId } });
     if (owned) return owned;
 
     const membership = await prisma.workspaceMember.findFirst({
         where: { userId },
-        include: { workspace: true }
+        include: { workspace: true },
+        orderBy: { joinedAt: 'asc' }
     });
     return membership?.workspace ?? null;
+}
+
+async function getWorkspaceForUser(userId, requestedWorkspaceId) {
+    return resolveWorkspaceForUser(userId, requestedWorkspaceId);
+}
+
+async function getWorkspaceForRequest(req) {
+    const { getWorkspaceIdFromRequest } = require('./require-auth.js');
+    return getWorkspaceForUser(req.auth.userId, getWorkspaceIdFromRequest(req));
 }
 
 async function ensureOwnerMembership(workspaceId, ownerId) {
@@ -60,6 +152,10 @@ async function createWorkspaceForOwner(ownerId, data) {
     });
 
     await ensureOwnerMembership(workspace.id, ownerId);
+    await prisma.user.update({
+        where: { id: ownerId },
+        data: { activeWorkspaceId: workspace.id }
+    });
     return workspace;
 }
 
@@ -230,6 +326,11 @@ module.exports = {
     serializeWorkspace,
     getWorkspaceForOwner,
     getWorkspaceForUser,
+    getWorkspaceForRequest,
+    resolveWorkspaceForUser,
+    listWorkspacesForUser,
+    setActiveWorkspace,
+    userHasWorkspaceAccess,
     createWorkspaceForOwner,
     ensureOwnerMembership,
     countBillableMembers,

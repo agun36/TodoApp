@@ -7,6 +7,8 @@ const { serializeUser, promoteAdminIfConfigured, normalizeInvitedMemberRole } = 
 const {
     serializeWorkspace,
     getWorkspaceForUser,
+    listWorkspacesForUser,
+    setActiveWorkspace,
     ownerNeedsOnboarding,
     redirectToFrontend
 } = require('../shared/workspace.service.js');
@@ -47,6 +49,7 @@ router.post('/', async function (req, res) {
     req.session.userId = activeUser.id;
     req.session.email = activeUser.email;
     const workspace = await getWorkspaceForUser(activeUser.id);
+    const workspaces = await listWorkspacesForUser(activeUser.id);
     const needsOnboarding = await ownerNeedsOnboarding(activeUser);
 
     if (wantsJson(req)) {
@@ -54,6 +57,8 @@ router.post('/', async function (req, res) {
         message: 'Logged in',
         user: serializeUser(activeUser),
         workspace: serializeWorkspace(workspace),
+        workspaces,
+        activeWorkspaceId: workspace?.id ?? null,
         needsOnboarding,
         token: createToken(activeUser.id, activeUser.email)
       });

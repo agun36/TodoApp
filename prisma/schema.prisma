@@ -25,6 +25,8 @@ model User {
   bio              String?
   language         String?           @default("en")
   role             String            @default("member")
+  activeWorkspaceId String?
+  activeWorkspace   Workspace?        @relation("ActiveWorkspace", fields: [activeWorkspaceId], references: [id], onDelete: SetNull)
   todos            Todo[]            @relation("TodoOwner")
   assignedTodos    Todo[]            @relation("TodoAssignee")
   projects         Project[]
@@ -53,6 +55,7 @@ model Workspace {
   stripeSubscriptionId String?           @unique
   ownerId              String            @unique
   owner      User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  activeUsers User[]           @relation("ActiveWorkspace")
   members    WorkspaceMember[]
   invites    Invite[]
   groups     WorkspaceGroup[]

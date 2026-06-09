@@ -18,12 +18,14 @@ const {
 } = require('../shared/user.service.js');
 const {
     getWorkspaceForOwner,
-    getWorkspaceForUser,
+    getWorkspaceForRequest,
+    listWorkspacesForUser,
     serializeWorkspace,
     canAddWorkspaceMember,
     ownerNeedsOnboarding,
     buildBillingSnapshot
 } = require('../shared/workspace.service.js');
+const { getWorkspaceIdFromRequest } = require('../shared/require-auth.js');
 const {
     createWorkspaceInvite,
     serializeInvite,
@@ -97,8 +99,8 @@ router.get('/', requireAuth, async function (req, res) {
         }
         const activeUser = (await normalizeInvitedMemberRole(currentUser.id)) || currentUser;
 
-        const workspace = await getWorkspaceForUser(activeUser.id);
-        const isOwner = workspace ? await isWorkspaceOwner(activeUser.id) : false;
+        const workspace = await getWorkspaceForRequest(req);
+        const isOwner = workspace ? workspace.ownerId === activeUser.id : false;
         const workspaceRole = workspace
             ? await getWorkspaceRole(activeUser.id, workspace)
             : null;
@@ -131,12 +133,16 @@ router.get('/', requireAuth, async function (req, res) {
             currentUserPayload.displayEmail = selfMembership?.teamEmail || activeUser.email;
         }
 
+        const workspaces = await listWorkspacesForUser(activeUser.id);
+
         const payload = {
             users,
             currentUser: currentUserPayload,
             canManageWorkspace,
             manageableProjects,
             workspace: serializeWorkspace(workspace),
+            workspaces,
+            activeWorkspaceId: workspace?.id ?? null,
             needsOnboarding,
             billing: workspace && isOwner ? await buildBillingSnapshot(workspace) : null
         };
@@ -182,11 +188,11 @@ router.get('/', requireAuth, async function (req, res) {
 router.post('/invite', requireAuth, async function (req, res) {
     const currentUser = await findUserById(req.auth.userId);
     if (!currentUser) return jsonError(res, 'User not found', 404);
-    if (!(await isWorkspaceManager(currentUser.id))) {
+    if (!(await isWorkspaceManager(currentUser.id, getWorkspaceIdFromRequest(req)))) {
         return jsonError(res, 'Only the workspace owner or an admin can invite people', 403);
     }
 
-    const workspace = await getWorkspaceForUser(currentUser.id);
+    const workspace = await getWorkspaceForRequest(req);
     if (!workspace) {
         return jsonError(res, 'Complete workspace onboarding before inviting teammates', 400);
     }
@@ -231,7 +237,7 @@ router.post('/invite', requireAuth, async function (req, res) {
         message: invite.emailSent
             ? 'Invite sent by email. You can also share the link or WhatsApp.'
             : invite.emailSkipped
-                ? 'Invite created. Email is not configured ó share the link or WhatsApp below.'
+                ? 'Invite created. Email is not configured ù share the link or WhatsApp below.'
                 : 'Invite created, but the email could not be sent. Share the link or WhatsApp below.',
         invite
     }, 201);
@@ -240,11 +246,11 @@ router.post('/invite', requireAuth, async function (req, res) {
 router.delete('/invites/:id', requireAuth, async function (req, res) {
     const currentUser = await findUserById(req.auth.userId);
     if (!currentUser) return jsonError(res, 'User not found', 404);
-    if (!(await isWorkspaceManager(currentUser.id))) {
+    if (!(await isWorkspaceManager(currentUser.id, getWorkspaceIdFromRequest(req)))) {
         return jsonError(res, 'Only the workspace owner or an admin can revoke invites', 403);
     }
 
-    const workspace = await getWorkspaceForUser(currentUser.id);
+    const workspace = await getWorkspaceForRequest(req);
     if (!workspace) return jsonError(res, 'Workspace not found', 404);
 
     const inviteId = parseUserId(req.params.id);
@@ -275,7 +281,7 @@ router.patch('/me/profile', requireAuth, async function (req, res) {
             timezone: req.body.timezone,
             bio: req.body.bio,
             language: req.body.language
-        });
+        }, getWorkspaceIdFromRequest(req));
         return jsonOk(res, { message: 'Profile updated', user });
     } catch (error) {
         if (error && error.status) {
@@ -292,11 +298,11 @@ router.patch('/:userId/team-email', requireAuth, async function (req, res) {
 
     const currentUser = await findUserById(req.auth.userId);
     if (!currentUser) return jsonError(res, 'User not found', 404);
-    if (!(await isWorkspaceManager(currentUser.id))) {
+    if (!(await isWorkspaceManager(currentUser.id, getWorkspaceIdFromRequest(req)))) {
         return jsonError(res, 'Only the workspace owner or an admin can assign workspace emails', 403);
     }
 
-    const workspace = await getWorkspaceForUser(currentUser.id);
+    const workspace = await getWorkspaceForRequest(req);
     if (!workspace) return jsonError(res, 'Workspace not found', 404);
 
     const membership = await prisma.workspaceMember.findUnique({
@@ -396,7 +402,10 @@ router.post('/:userId/projects', requireAuth, async function (req, res) {
         return jsonError(res, 'One or more projects were not found', 404);
     }
 
-    const callerCanManageWorkspace = await isWorkspaceManager(currentUser.id);
+    const callerCanManageWorkspace = await isWorkspaceManager(
+        currentUser.id,
+        getWorkspaceIdFromRequest(req)
+    );
     for (const project of projects) {
         if (!callerCanManageWorkspace && project.userId !== currentUser.id) {
             return jsonError(res, 'You can only add members to projects you own', 403);
