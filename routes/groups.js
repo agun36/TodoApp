@@ -3,7 +3,7 @@ var router = express.Router();
 const { jsonOk, jsonError } = require('../shared/api-response.js');
 const { requireAuth } = require('../shared/require-auth.js');
 const { findUserById, isWorkspaceOwner, isWorkspaceManager } = require('../shared/user.service.js');
-const { getWorkspaceForUser } = require('../shared/workspace.service.js');
+const { getWorkspaceForUser, canCreateGroup } = require('../shared/workspace.service.js');
 const {
     listGroupsForWorkspace,
     createGroup,
@@ -56,6 +56,11 @@ router.post('/', requireAuth, async function (req, res) {
 
         const name = String(req.body.name || '').trim();
         if (!name) return jsonError(res, 'Group name is required', 400);
+
+        const groupCapacity = await canCreateGroup(ctx.workspace);
+        if (!groupCapacity.allowed) {
+            return jsonError(res, groupCapacity.reason, 402);
+        }
 
         const color = String(req.body.color || '#6366f1').trim() || '#6366f1';
         const group = await createGroup(ctx.workspace.id, { name, color });

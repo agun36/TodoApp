@@ -16,6 +16,7 @@ const {
     getProjectMembers
 } = require('../shared/project.service.js');
 const { logActivity } = require('../shared/activity.service.js');
+const { getWorkspaceForUser, canCreateProject } = require('../shared/workspace.service.js');
 
 function parseProjectId(value) {
     if (value === undefined || value === null) return null;
@@ -84,6 +85,13 @@ router.post('/', requireAuth, async function (req, res) {
     if (existing) {
         if (wantsJson(req)) return jsonError(res, 'Project already exists', 409);
         return res.redirect('/projects?message=Project+already+exists');
+    }
+
+    const workspace = await getWorkspaceForUser(req.auth.userId);
+    const projectCapacity = await canCreateProject(workspace);
+    if (!projectCapacity.allowed) {
+        if (wantsJson(req)) return jsonError(res, projectCapacity.reason, 402);
+        return res.redirect('/projects?message=' + encodeURIComponent(projectCapacity.reason));
     }
 
     const project = await prisma.project.create({

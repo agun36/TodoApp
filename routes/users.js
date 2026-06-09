@@ -22,7 +22,7 @@ const {
     serializeWorkspace,
     canAddWorkspaceMember,
     ownerNeedsOnboarding,
-    FREE_MEMBER_LIMIT
+    buildBillingSnapshot
 } = require('../shared/workspace.service.js');
 const {
     createWorkspaceInvite,
@@ -138,13 +138,7 @@ router.get('/', requireAuth, async function (req, res) {
             manageableProjects,
             workspace: serializeWorkspace(workspace),
             needsOnboarding,
-            billing: workspace && isOwner
-                ? {
-                    plan: workspace.plan,
-                    freeMemberLimit: FREE_MEMBER_LIMIT,
-                    membersAreFree: true
-                }
-                : null
+            billing: workspace && isOwner ? await buildBillingSnapshot(workspace) : null
         };
 
         if (canManageWorkspace && workspace) {
@@ -237,7 +231,7 @@ router.post('/invite', requireAuth, async function (req, res) {
         message: invite.emailSent
             ? 'Invite sent by email. You can also share the link or WhatsApp.'
             : invite.emailSkipped
-                ? 'Invite created. Email is not configured â€” share the link or WhatsApp below.'
+                ? 'Invite created. Email is not configured — share the link or WhatsApp below.'
                 : 'Invite created, but the email could not be sent. Share the link or WhatsApp below.',
         invite
     }, 201);

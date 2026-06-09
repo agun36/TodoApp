@@ -8,16 +8,19 @@ const {
     getWorkspaceForOwner,
     serializeWorkspace,
     updateWorkspacePlan,
-    FREE_MEMBER_LIMIT
+    buildBillingSnapshot
 } = require('../shared/workspace.service.js');
 const {
     getStripe,
-    getPublishableKey,
     isStripeConfigured,
     createEmbeddedCheckoutSession,
     fulfillCheckoutSession,
     handleWebhookEvent
 } = require('../shared/stripe.service.js');
+
+async function billingPayload(workspace) {
+    return buildBillingSnapshot(workspace, { includeStripeConfigured: true });
+}
 
 router.get('/', requireAuth, async function (req, res) {
     try {
@@ -29,13 +32,7 @@ router.get('/', requireAuth, async function (req, res) {
 
         return jsonOk(res, {
             workspace: serializeWorkspace(workspace),
-            billing: {
-                plan: workspace.plan || 'free',
-                freeMemberLimit: FREE_MEMBER_LIMIT,
-                membersAreFree: true,
-                stripeConfigured: isStripeConfigured(),
-                publishableKey: isStripeConfigured() ? getPublishableKey() : null
-            }
+            billing: await billingPayload(workspace)
         });
     } catch (error) {
         console.error(error);
@@ -61,13 +58,7 @@ router.post('/sync', requireAuth, async function (req, res) {
                 return jsonOk(res, {
                     message: 'Pro plan synced',
                     workspace: serializeWorkspace(updated),
-                    billing: {
-                        plan: 'paid',
-                        freeMemberLimit: FREE_MEMBER_LIMIT,
-                        membersAreFree: true,
-                        stripeConfigured: isStripeConfigured(),
-                        publishableKey: isStripeConfigured() ? getPublishableKey() : null
-                    }
+                    billing: await billingPayload(updated)
                 });
             }
         }
@@ -90,13 +81,7 @@ router.post('/sync', requireAuth, async function (req, res) {
                 return jsonOk(res, {
                     message: 'Pro plan synced from Stripe',
                     workspace: serializeWorkspace(updated),
-                    billing: {
-                        plan: 'paid',
-                        freeMemberLimit: FREE_MEMBER_LIMIT,
-                        membersAreFree: true,
-                        stripeConfigured: isStripeConfigured(),
-                        publishableKey: isStripeConfigured() ? getPublishableKey() : null
-                    }
+                    billing: await billingPayload(updated)
                 });
             }
         }
@@ -111,13 +96,7 @@ router.post('/sync', requireAuth, async function (req, res) {
                 return jsonOk(res, {
                     message: 'Pro plan activated',
                     workspace: serializeWorkspace(result.workspace),
-                    billing: {
-                        plan: 'paid',
-                        freeMemberLimit: FREE_MEMBER_LIMIT,
-                        membersAreFree: true,
-                        stripeConfigured: isStripeConfigured(),
-                        publishableKey: isStripeConfigured() ? getPublishableKey() : null
-                    }
+                    billing: await billingPayload(result.workspace)
                 });
             }
         }
@@ -125,13 +104,7 @@ router.post('/sync', requireAuth, async function (req, res) {
         return jsonOk(res, {
             message: 'No active Pro subscription found',
             workspace: serializeWorkspace(workspace),
-            billing: {
-                plan: workspace.plan || 'free',
-                freeMemberLimit: FREE_MEMBER_LIMIT,
-                membersAreFree: true,
-                stripeConfigured: isStripeConfigured(),
-                publishableKey: isStripeConfigured() ? getPublishableKey() : null
-            }
+            billing: await billingPayload(workspace)
         });
     } catch (error) {
         console.error(error);
@@ -210,12 +183,7 @@ router.get('/checkout/status', requireAuth, async function (req, res) {
             return jsonOk(res, {
                 status: result.status,
                 workspace: serializeWorkspace(workspace),
-                billing: {
-                    plan: workspace.plan || 'free',
-                    freeMemberLimit: FREE_MEMBER_LIMIT,
-                    membersAreFree: true,
-                    stripeConfigured: isStripeConfigured()
-                }
+                billing: await billingPayload(workspace)
             });
         }
 
@@ -223,12 +191,7 @@ router.get('/checkout/status', requireAuth, async function (req, res) {
             status: 'complete',
             message: 'Payment successful. Welcome to Pro!',
             workspace: serializeWorkspace(result.workspace),
-            billing: {
-                plan: result.workspace.plan || 'free',
-                freeMemberLimit: FREE_MEMBER_LIMIT,
-                membersAreFree: true,
-                stripeConfigured: isStripeConfigured()
-            }
+            billing: await billingPayload(result.workspace)
         });
     } catch (error) {
         console.error(error);
@@ -256,13 +219,7 @@ router.post('/plan', requireAuth, async function (req, res) {
         return jsonOk(res, {
             message: 'Switched to Free',
             workspace: serializeWorkspace(workspace),
-            billing: {
-                plan: workspace.plan || 'free',
-                freeMemberLimit: FREE_MEMBER_LIMIT,
-                membersAreFree: true,
-                stripeConfigured: isStripeConfigured(),
-                publishableKey: isStripeConfigured() ? getPublishableKey() : null
-            }
+            billing: await billingPayload(workspace)
         });
     } catch (error) {
         console.error(error);
