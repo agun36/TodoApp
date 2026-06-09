@@ -1,5 +1,6 @@
 var express = require('express');
 var router = express.Router();
+const { prisma } = require('../shared/prisma.service.js');
 const { jsonOk, jsonError } = require('../shared/api-response.js');
 const { requireAuth } = require('../shared/require-auth.js');
 const { findUserById } = require('../shared/user.service.js');
@@ -32,12 +33,109 @@ router.get('/', requireAuth, async function (req, res) {
                 plan: workspace.plan || 'free',
                 freeMemberLimit: FREE_MEMBER_LIMIT,
                 membersAreFree: true,
-                stripeConfigured: isStripeConfigured()
+                stripeConfigured: isStripeConfigured(),
+                publishableKey: isStripeConfigured() ? getPublishableKey() : null
             }
         });
     } catch (error) {
         console.error(error);
         return jsonError(res, 'An error occurred', 500);
+    }
+});
+
+router.post('/sync', requireAuth, async function (req, res) {
+    try {
+        const user = await findUserById(req.auth.userId);
+        if (!user) return jsonError(res, 'User not found', 404);
+
+        const workspace = await getWorkspaceForOwner(user.id);
+        if (!workspace) return jsonError(res, 'Workspace not found', 404);
+
+        const stripe = getStripe();
+        if (!stripe) return jsonError(res, 'Stripe is not configured', 503);
+
+        if (workspace.stripeSubscriptionId) {
+            const subscription = await stripe.subscriptions.retrieve(workspace.stripeSubscriptionId);
+            if (subscription.status === 'active' || subscription.status === 'trialing') {
+                const updated = await updateWorkspacePlan(user.id, 'paid');
+                return jsonOk(res, {
+                    message: 'Pro plan synced',
+                    workspace: serializeWorkspace(updated),
+                    billing: {
+                        plan: 'paid',
+                        freeMemberLimit: FREE_MEMBER_LIMIT,
+                        membersAreFree: true,
+                        stripeConfigured: isStripeConfigured(),
+                        publishableKey: isStripeConfigured() ? getPublishableKey() : null
+                    }
+                });
+            }
+        }
+
+        if (workspace.stripeCustomerId) {
+            const subscriptions = await stripe.subscriptions.list({
+                customer: workspace.stripeCustomerId,
+                status: 'active',
+                limit: 1
+            });
+            if (subscriptions.data.length > 0) {
+                const sub = subscriptions.data[0];
+                const updated = await prisma.workspace.update({
+                    where: { id: workspace.id },
+                    data: {
+                        plan: 'paid',
+                        stripeSubscriptionId: sub.id
+                    }
+                });
+                return jsonOk(res, {
+                    message: 'Pro plan synced from Stripe',
+                    workspace: serializeWorkspace(updated),
+                    billing: {
+                        plan: 'paid',
+                        freeMemberLimit: FREE_MEMBER_LIMIT,
+                        membersAreFree: true,
+                        stripeConfigured: isStripeConfigured(),
+                        publishableKey: isStripeConfigured() ? getPublishableKey() : null
+                    }
+                });
+            }
+        }
+
+        const sessionId = String(req.body.sessionId || '').trim();
+        if (sessionId) {
+            const result = await fulfillCheckoutSession(sessionId, {
+                workspaceId: workspace.id,
+                ownerId: user.id
+            });
+            if (result && result.status === 'complete' && result.workspace) {
+                return jsonOk(res, {
+                    message: 'Pro plan activated',
+                    workspace: serializeWorkspace(result.workspace),
+                    billing: {
+                        plan: 'paid',
+                        freeMemberLimit: FREE_MEMBER_LIMIT,
+                        membersAreFree: true,
+                        stripeConfigured: isStripeConfigured(),
+                        publishableKey: isStripeConfigured() ? getPublishableKey() : null
+                    }
+                });
+            }
+        }
+
+        return jsonOk(res, {
+            message: 'No active Pro subscription found',
+            workspace: serializeWorkspace(workspace),
+            billing: {
+                plan: workspace.plan || 'free',
+                freeMemberLimit: FREE_MEMBER_LIMIT,
+                membersAreFree: true,
+                stripeConfigured: isStripeConfigured(),
+                publishableKey: isStripeConfigured() ? getPublishableKey() : null
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        return jsonError(res, error.message || 'An error occurred', error.status || 500);
     }
 });
 
@@ -91,7 +189,10 @@ router.get('/checkout/status', requireAuth, async function (req, res) {
         let result = null;
         for (let attempt = 0; attempt < 3; attempt += 1) {
             try {
-                result = await fulfillCheckoutSession(sessionId);
+                result = await fulfillCheckoutSession(sessionId, {
+                    workspaceId: workspace.id,
+                    ownerId: user.id
+                });
                 break;
             } catch (dbError) {
                 const transient = /timeout|terminated|ECONNRESET|connection/i.test(
@@ -159,7 +260,8 @@ router.post('/plan', requireAuth, async function (req, res) {
                 plan: workspace.plan || 'free',
                 freeMemberLimit: FREE_MEMBER_LIMIT,
                 membersAreFree: true,
-                stripeConfigured: isStripeConfigured()
+                stripeConfigured: isStripeConfigured(),
+                publishableKey: isStripeConfigured() ? getPublishableKey() : null
             }
         });
     } catch (error) {

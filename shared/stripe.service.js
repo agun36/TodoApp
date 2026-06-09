@@ -68,22 +68,34 @@ async function createEmbeddedCheckoutSession({ workspace, user }) {
     return session;
 }
 
-async function fulfillCheckoutSession(sessionId) {
+async function fulfillCheckoutSession(sessionId, expected) {
     const stripe = getStripe();
     if (!stripe || !sessionId) return null;
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    const isPaid =
-        session.status === 'complete' || session.payment_status === 'paid';
-    if (!isPaid) {
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ['subscription']
+    });
+    const isComplete =
+        session.status === 'complete' ||
+        session.payment_status === 'paid' ||
+        session.payment_status === 'no_payment_required';
+    if (!isComplete) {
         return { status: session.status || 'open', workspace: null };
     }
 
     const workspaceId = session.metadata && session.metadata.workspaceId;
+    const ownerId = session.metadata && session.metadata.ownerId;
     if (!workspaceId) {
         const err = new Error('Checkout session is missing workspace metadata');
         err.status = 400;
         throw err;
+    }
+    if (expected) {
+        if (workspaceId !== expected.workspaceId || ownerId !== expected.ownerId) {
+            const err = new Error('This payment does not belong to your workspace');
+            err.status = 403;
+            throw err;
+        }
     }
 
     const workspace = await prisma.workspace.update({
